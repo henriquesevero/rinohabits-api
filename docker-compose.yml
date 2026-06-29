@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rinohabits
+      POSTGRES_PASSWORD: rinohabits
+      POSTGRES_DB: rinohabits
+    ports:
+      - "5432:5432"
+    volumes:
+      - rinohabits_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rinohabits -d rinohabits"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rinohabits_postgres_data:

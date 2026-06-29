@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS monthly_history;
+DROP TABLE IF EXISTS daily_logs;
+DROP TABLE IF EXISTS habits;
+DROP TABLE IF EXISTS users;
+DROP FUNCTION IF EXISTS set_updated_at();
+DROP EXTENSION IF EXISTS pgcrypto;
