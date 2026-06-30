@@ -17,6 +17,7 @@ type UserRepository interface {
 	Create(ctx context.Context, u *user.User) error
 	FindByEmail(ctx context.Context, email string) (*user.User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+	UpdateTimezone(ctx context.Context, id uuid.UUID, timezone string) error
 }
 
 type HabitRepository interface {

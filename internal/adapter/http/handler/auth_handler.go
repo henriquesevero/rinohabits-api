@@ -70,7 +70,7 @@ func (h AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.login.Execute(r.Context(), auth.LoginInput{Email: req.Email, Password: req.Password})
+	token, err := h.login.Execute(r.Context(), auth.LoginInput{Email: req.Email, Password: req.Password, Timezone: req.Timezone})
 	if err != nil {
 		if errors.Is(err, user.ErrInvalidCredentials) {
 			writeError(w, http.StatusUnauthorized, err.Error())
