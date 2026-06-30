@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	httpapi "github.com/henriquesevero/rinohabits-api/internal/adapter/http"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/postgres"
