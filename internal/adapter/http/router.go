@@ -14,6 +14,7 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/security"
 	"github.com/henriquesevero/rinohabits-api/internal/usecase/auth"
 	usecasebook "github.com/henriquesevero/rinohabits-api/internal/usecase/book"
+	usecasecourse "github.com/henriquesevero/rinohabits-api/internal/usecase/course"
 	usecasehabit "github.com/henriquesevero/rinohabits-api/internal/usecase/habit"
 	"github.com/henriquesevero/rinohabits-api/internal/usecase/stats"
 )
@@ -74,6 +75,20 @@ func NewRouter(deps Dependencies) http.Handler {
 		apiBaseURL,
 	)
 
+	courses := postgres.NewCourseRepository(deps.Pool)
+	courseLogs := postgres.NewCourseLogRepository(deps.Pool)
+
+	courseHandler := handler.NewCourseHandler(
+		usecasecourse.NewCreateCourseUseCase(courses),
+		usecasecourse.NewListCoursesUseCase(courses),
+		usecasecourse.NewUpdateCourseUseCase(courses, systemClock),
+		usecasecourse.NewRegisterStudyUseCase(courses, courseLogs, users, systemClock),
+		usecasecourse.NewDeleteCourseUseCase(courses),
+		courses,
+		uploadsDir,
+		apiBaseURL,
+	)
+
 	statsHandler := handler.NewStatsHandler(
 		stats.NewGetPeriodOverviewUseCase(users, habits, dailyLogs, systemClock),
 		stats.NewGetTrendUseCase(users, habits, dailyLogs, systemClock),
@@ -105,6 +120,12 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("POST /books/{id}/cover", protected(http.HandlerFunc(bookHandler.UploadCover)))
 	mux.Handle("DELETE /books/{id}", protected(http.HandlerFunc(bookHandler.Delete)))
 	mux.Handle("GET /books/reading-stats", protected(http.HandlerFunc(bookHandler.ReadingStats)))
+	mux.Handle("POST /courses", protected(http.HandlerFunc(courseHandler.Create)))
+	mux.Handle("GET /courses", protected(http.HandlerFunc(courseHandler.List)))
+	mux.Handle("PATCH /courses/{id}", protected(http.HandlerFunc(courseHandler.Update)))
+	mux.Handle("POST /courses/{id}/study", protected(http.HandlerFunc(courseHandler.RegisterStudy)))
+	mux.Handle("POST /courses/{id}/cover", protected(http.HandlerFunc(courseHandler.UploadCover)))
+	mux.Handle("DELETE /courses/{id}", protected(http.HandlerFunc(courseHandler.Delete)))
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 
 	return middleware.CORS(deps.CORSOrigin)(mux)
