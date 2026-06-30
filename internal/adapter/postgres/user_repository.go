@@ -44,6 +44,14 @@ func (r UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User,
 	)
 }
 
+func (r UserRepository) UpdateTimezone(ctx context.Context, id uuid.UUID, timezone string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET timezone = $1, updated_at = now() WHERE id = $2`,
+		timezone, id,
+	)
+	return err
+}
+
 func (r UserRepository) scanOne(ctx context.Context, query string, args ...any) (*user.User, error) {
 	row := r.pool.QueryRow(ctx, query, args...)
 

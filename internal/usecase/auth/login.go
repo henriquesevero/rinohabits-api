@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/henriquesevero/rinohabits-api/internal/domain/user"
 	"github.com/henriquesevero/rinohabits-api/internal/port"
@@ -11,6 +12,7 @@ import (
 type LoginInput struct {
 	Email    string
 	Password string
+	Timezone string
 }
 
 type LoginUseCase struct {
@@ -34,6 +36,12 @@ func (uc LoginUseCase) Execute(ctx context.Context, in LoginInput) (string, erro
 
 	if !uc.hasher.Matches(in.Password, u.PasswordHash) {
 		return "", user.ErrInvalidCredentials
+	}
+
+	if in.Timezone != "" && in.Timezone != u.Timezone {
+		if _, err := time.LoadLocation(in.Timezone); err == nil {
+			_ = uc.users.UpdateTimezone(ctx, u.ID, in.Timezone)
+		}
 	}
 
 	return uc.tokens.Generate(u.ID)
