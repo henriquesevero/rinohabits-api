@@ -12,13 +12,26 @@ import (
 )
 
 type AuthHandler struct {
-	register auth.RegisterUseCase
-	login    auth.LoginUseCase
-	me       auth.GetCurrentUserUseCase
+	register       auth.RegisterUseCase
+	login          auth.LoginUseCase
+	me             auth.GetCurrentUserUseCase
+	changeEmail    auth.ChangeEmailUseCase
+	changePassword auth.ChangePasswordUseCase
+	deleteAccount  auth.DeleteAccountUseCase
 }
 
-func NewAuthHandler(register auth.RegisterUseCase, login auth.LoginUseCase, me auth.GetCurrentUserUseCase) AuthHandler {
-	return AuthHandler{register: register, login: login, me: me}
+func NewAuthHandler(
+	register auth.RegisterUseCase,
+	login auth.LoginUseCase,
+	me auth.GetCurrentUserUseCase,
+	changeEmail auth.ChangeEmailUseCase,
+	changePassword auth.ChangePasswordUseCase,
+	deleteAccount auth.DeleteAccountUseCase,
+) AuthHandler {
+	return AuthHandler{
+		register: register, login: login, me: me,
+		changeEmail: changeEmail, changePassword: changePassword, deleteAccount: deleteAccount,
+	}
 }
 
 func (h AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -97,4 +110,110 @@ func (h AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, dto.UserResponse{ID: u.ID.String(), Name: u.Name, Email: u.Email})
+}
+
+func (h AuthHandler) ChangeEmail(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.ChangeEmailRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.NewEmail == "" || req.CurrentPassword == "" {
+		writeError(w, http.StatusBadRequest, "new_email and current_password are required")
+		return
+	}
+
+	err := h.changeEmail.Execute(r.Context(), auth.ChangeEmailInput{
+		UserID:          userID,
+		CurrentPassword: req.CurrentPassword,
+		NewEmail:        req.NewEmail,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrWrongPassword):
+			writeError(w, http.StatusUnauthorized, "Senha atual incorreta.")
+		case errors.Is(err, user.ErrEmailAlreadyRegistered):
+			writeError(w, http.StatusConflict, "Este e-mail já está em uso.")
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to update email")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.ChangePasswordRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		writeError(w, http.StatusBadRequest, "current_password and new_password are required")
+		return
+	}
+	if len(req.NewPassword) < 8 {
+		writeError(w, http.StatusBadRequest, "Nova senha deve ter pelo menos 8 caracteres.")
+		return
+	}
+
+	if err := h.changePassword.Execute(r.Context(), auth.ChangePasswordInput{
+		UserID:          userID,
+		CurrentPassword: req.CurrentPassword,
+		NewPassword:     req.NewPassword,
+	}); err != nil {
+		if errors.Is(err, user.ErrWrongPassword) {
+			writeError(w, http.StatusUnauthorized, "Senha atual incorreta.")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to update password")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.DeleteAccountRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.CurrentPassword == "" {
+		writeError(w, http.StatusBadRequest, "current_password is required")
+		return
+	}
+
+	if err := h.deleteAccount.Execute(r.Context(), auth.DeleteAccountInput{
+		UserID:          userID,
+		CurrentPassword: req.CurrentPassword,
+	}); err != nil {
+		if errors.Is(err, user.ErrWrongPassword) {
+			writeError(w, http.StatusUnauthorized, "Senha atual incorreta.")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to delete account")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
