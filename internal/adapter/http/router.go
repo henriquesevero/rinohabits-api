@@ -12,6 +12,8 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/middleware"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/postgres"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/security"
+	"github.com/henriquesevero/rinohabits-api/internal/adapter/storage"
+	"github.com/henriquesevero/rinohabits-api/internal/port"
 	"github.com/henriquesevero/rinohabits-api/internal/usecase/auth"
 	usecasebook "github.com/henriquesevero/rinohabits-api/internal/usecase/book"
 	usecasecourse "github.com/henriquesevero/rinohabits-api/internal/usecase/course"
@@ -20,11 +22,13 @@ import (
 )
 
 type Dependencies struct {
-	Pool         *pgxpool.Pool
-	TokenManager security.JWTTokenManager
-	CORSOrigin   string
-	UploadsDir   string
-	APIBaseURL   string
+	Pool               *pgxpool.Pool
+	TokenManager       security.JWTTokenManager
+	CORSOrigin         string
+	UploadsDir         string
+	APIBaseURL         string
+	SupabaseURL        string
+	SupabaseServiceKey string
 }
 
 func NewRouter(deps Dependencies) http.Handler {
@@ -37,6 +41,14 @@ func NewRouter(deps Dependencies) http.Handler {
 	apiBaseURL := deps.APIBaseURL
 	if apiBaseURL == "" {
 		apiBaseURL = "http://localhost:8090"
+	}
+
+	var fileStorage port.FileStorage
+	if deps.SupabaseURL != "" && deps.SupabaseServiceKey != "" {
+		fileStorage = storage.NewSupabaseStorage(deps.SupabaseURL, deps.SupabaseServiceKey)
+	} else {
+		os.MkdirAll(uploadsDir, 0755)
+		fileStorage = storage.NewLocalStorage(uploadsDir, apiBaseURL)
 	}
 
 	users := postgres.NewUserRepository(deps.Pool)
@@ -74,8 +86,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasebook.NewDeleteBookUseCase(books),
 		stats.NewGetReadingStatsUseCase(users, readingLogs, systemClock),
 		books,
-		uploadsDir,
-		apiBaseURL,
+		fileStorage,
 	)
 
 	courses := postgres.NewCourseRepository(deps.Pool)
@@ -88,8 +99,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasecourse.NewRegisterStudyUseCase(courses, courseLogs, users, systemClock),
 		usecasecourse.NewDeleteCourseUseCase(courses),
 		courses,
-		uploadsDir,
-		apiBaseURL,
+		fileStorage,
 	)
 
 	statsHandler := handler.NewStatsHandler(
@@ -100,8 +110,6 @@ func NewRouter(deps Dependencies) http.Handler {
 	)
 
 	protected := middleware.Authenticate(deps.TokenManager)
-
-	os.MkdirAll(uploadsDir, 0755)
 
 	mux.HandleFunc("GET /health", healthHandler(deps.Pool))
 	mux.HandleFunc("POST /auth/register", authHandler.Register)

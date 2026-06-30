@@ -2,10 +2,7 @@ package handler
 
 import (
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -26,8 +23,7 @@ type CourseHandler struct {
 	registerStudy usecasecourse.RegisterStudyUseCase
 	delete        usecasecourse.DeleteCourseUseCase
 	courses       port.CourseRepository
-	uploadsDir    string
-	apiBaseURL    string
+	storage       port.FileStorage
 }
 
 func NewCourseHandler(
@@ -37,13 +33,12 @@ func NewCourseHandler(
 	registerStudy usecasecourse.RegisterStudyUseCase,
 	delete usecasecourse.DeleteCourseUseCase,
 	courses port.CourseRepository,
-	uploadsDir string,
-	apiBaseURL string,
+	storage port.FileStorage,
 ) CourseHandler {
 	return CourseHandler{
 		create: create, list: list, update: update,
 		registerStudy: registerStudy, delete: delete,
-		courses: courses, uploadsDir: uploadsDir, apiBaseURL: apiBaseURL,
+		courses: courses, storage: storage,
 	}
 }
 
@@ -245,33 +240,19 @@ func (h CourseHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+	contentType, ok := allowedImageTypes[ext]
+	if !ok {
 		writeError(w, http.StatusBadRequest, "only jpg, png and webp are allowed")
 		return
 	}
 
-	dir := filepath.Join(h.uploadsDir, "courses")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create upload dir")
-		return
-	}
-
-	filename := fmt.Sprintf("%s%s", courseID.String(), ext)
-	dest := filepath.Join(dir, filename)
-
-	out, err := os.Create(dest)
+	filename := "courses/" + courseID.String() + ext
+	coverURL, err := h.storage.Upload(r.Context(), filename, file, contentType)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to save file")
-		return
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, file); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to write file")
+		writeError(w, http.StatusInternalServerError, "failed to upload cover")
 		return
 	}
 
-	coverURL := fmt.Sprintf("%s/uploads/courses/%s", h.apiBaseURL, filename)
 	if err := h.courses.UpdateCover(r.Context(), courseID, coverURL); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update cover url")
 		return
