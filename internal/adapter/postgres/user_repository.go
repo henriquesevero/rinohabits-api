@@ -52,6 +52,27 @@ func (r UserRepository) UpdateTimezone(ctx context.Context, id uuid.UUID, timezo
 	return err
 }
 
+func (r UserRepository) UpdateEmail(ctx context.Context, id uuid.UUID, email string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET email = $1, updated_at = now() WHERE id = $2`,
+		email, id,
+	)
+	return err
+}
+
+func (r UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2`,
+		passwordHash, id,
+	)
+	return err
+}
+
+func (r UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	return err
+}
+
 func (r UserRepository) scanOne(ctx context.Context, query string, args ...any) (*user.User, error) {
 	row := r.pool.QueryRow(ctx, query, args...)
 

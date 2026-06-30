@@ -49,6 +49,9 @@ func NewRouter(deps Dependencies) http.Handler {
 		auth.NewRegisterUseCase(users, hasher),
 		auth.NewLoginUseCase(users, hasher, deps.TokenManager),
 		auth.NewGetCurrentUserUseCase(users),
+		auth.NewChangeEmailUseCase(users, hasher),
+		auth.NewChangePasswordUseCase(users, hasher),
+		auth.NewDeleteAccountUseCase(users, hasher),
 	)
 
 	habitHandler := handler.NewHabitHandler(
@@ -104,6 +107,9 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /auth/register", authHandler.Register)
 	mux.HandleFunc("POST /auth/login", authHandler.Login)
 	mux.Handle("GET /me", protected(http.HandlerFunc(authHandler.Me)))
+	mux.Handle("PATCH /me/email", protected(http.HandlerFunc(authHandler.ChangeEmail)))
+	mux.Handle("PATCH /me/password", protected(http.HandlerFunc(authHandler.ChangePassword)))
+	mux.Handle("DELETE /me", protected(http.HandlerFunc(authHandler.DeleteAccount)))
 	mux.Handle("POST /habits", protected(http.HandlerFunc(habitHandler.Create)))
 	mux.Handle("GET /habits/today", protected(http.HandlerFunc(habitHandler.Today)))
 	mux.Handle("POST /habits/{id}/toggle", protected(http.HandlerFunc(habitHandler.ToggleLog)))
