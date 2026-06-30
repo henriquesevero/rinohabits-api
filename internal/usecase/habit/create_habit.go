@@ -15,6 +15,7 @@ type CreateHabitInput struct {
 	Icon           string
 	Color          string
 	ActiveWeekdays []int
+	MonthlyTarget  *int
 }
 
 type CreateHabitUseCase struct {
@@ -30,7 +31,7 @@ func (uc CreateHabitUseCase) Execute(ctx context.Context, in CreateHabitInput) (
 		return nil, domainhabit.ErrNoActiveWeekday
 	}
 
-	h := domainhabit.New(in.UserID, in.Name, in.Icon, in.Color, in.ActiveWeekdays)
+	h := domainhabit.New(in.UserID, in.Name, in.Icon, in.Color, in.ActiveWeekdays, in.MonthlyTarget)
 
 	if err := uc.habits.Create(ctx, h); err != nil {
 		return nil, err

@@ -13,12 +13,13 @@ type Habit struct {
 	Icon           string
 	Color          string
 	ActiveWeekdays []int
+	MonthlyTarget  *int
 	IsActive       bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
 
-func New(userID uuid.UUID, name, icon, color string, activeWeekdays []int) *Habit {
+func New(userID uuid.UUID, name, icon, color string, activeWeekdays []int, monthlyTarget *int) *Habit {
 	return &Habit{
 		ID:             uuid.New(),
 		UserID:         userID,
@@ -26,6 +27,7 @@ func New(userID uuid.UUID, name, icon, color string, activeWeekdays []int) *Habi
 		Icon:           icon,
 		Color:          color,
 		ActiveWeekdays: activeWeekdays,
+		MonthlyTarget:  monthlyTarget,
 		IsActive:       true,
 	}
 }

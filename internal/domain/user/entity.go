@@ -7,15 +7,13 @@ import (
 )
 
 type User struct {
-	ID                     uuid.UUID
-	Name                   string
-	Email                  string
-	PasswordHash           string
-	Timezone               string
-	MonthlyRewardGoalCents int
-	VacationMode           bool
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	ID           uuid.UUID
+	Name         string
+	Email        string
+	PasswordHash string
+	Timezone     string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 func New(name, email, passwordHash, timezone string) *User {

@@ -25,16 +25,16 @@ func NewHabitRepository(pool *pgxpool.Pool) HabitRepository {
 
 func (r HabitRepository) Create(ctx context.Context, h *habit.Habit) error {
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO habits (id, user_id, name, icon, color, active_weekdays)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		h.ID, h.UserID, h.Name, h.Icon, h.Color, toInt16Slice(h.ActiveWeekdays),
+		`INSERT INTO habits (id, user_id, name, icon, color, active_weekdays, monthly_target)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		h.ID, h.UserID, h.Name, h.Icon, h.Color, toInt16Slice(h.ActiveWeekdays), h.MonthlyTarget,
 	)
 	return err
 }
 
 func (r HabitRepository) FindByID(ctx context.Context, id uuid.UUID) (*habit.Habit, error) {
 	row := r.pool.QueryRow(ctx,
-		`SELECT id, user_id, name, COALESCE(icon, ''), COALESCE(color, ''), active_weekdays, is_active, created_at, updated_at
+		`SELECT id, user_id, name, COALESCE(icon, ''), COALESCE(color, ''), active_weekdays, monthly_target, is_active, created_at, updated_at
 		 FROM habits
 		 WHERE id = $1 AND deleted_at IS NULL`,
 		id,
@@ -53,7 +53,7 @@ func (r HabitRepository) FindByID(ctx context.Context, id uuid.UUID) (*habit.Hab
 
 func (r HabitRepository) ListActiveByUser(ctx context.Context, userID uuid.UUID) ([]*habit.Habit, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, name, COALESCE(icon, ''), COALESCE(color, ''), active_weekdays, is_active, created_at, updated_at
+		`SELECT id, user_id, name, COALESCE(icon, ''), COALESCE(color, ''), active_weekdays, monthly_target, is_active, created_at, updated_at
 		 FROM habits
 		 WHERE user_id = $1 AND is_active AND deleted_at IS NULL
 		 ORDER BY created_at`,
@@ -76,11 +76,16 @@ func (r HabitRepository) ListActiveByUser(ctx context.Context, userID uuid.UUID)
 	return habits, rows.Err()
 }
 
+func (r HabitRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `UPDATE habits SET deleted_at = now() WHERE id = $1`, id)
+	return err
+}
+
 func scanHabit(row rowScanner) (*habit.Habit, error) {
 	var h habit.Habit
 	var weekdays []int16
 
-	err := row.Scan(&h.ID, &h.UserID, &h.Name, &h.Icon, &h.Color, &weekdays, &h.IsActive, &h.CreatedAt, &h.UpdatedAt)
+	err := row.Scan(&h.ID, &h.UserID, &h.Name, &h.Icon, &h.Color, &weekdays, &h.MonthlyTarget, &h.IsActive, &h.CreatedAt, &h.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
