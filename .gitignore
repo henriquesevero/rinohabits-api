@@ -1,0 +1,34 @@
+# Build outputs
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Profiling
+*.prof
+
+# Environment variables (never commit secrets)
+.env
+.env.local
+.env.*
+
+# Go workspace
+go.work
+go.work.sum
+
+# Air (live reload)
+tmp/
+
+# Uploads (user-generated content, store externally in production)
+uploads/
+
+# Editor
+.DS_Store
+.idea/
+.vscode/settings.json
