@@ -101,8 +101,20 @@ func (uc GetPeriodOverviewUseCase) Execute(ctx context.Context, userID uuid.UUID
 			denominator = *h.MonthlyTarget
 		}
 
-		p.Percentage = percentageOf(p.CompletedCount, denominator)
+		if denominator == 0 {
+			// no trackable days for this habit in the period yet (e.g. it was
+			// just created): there is nothing to report progress on, so it
+			// must not be displayed as "100% done".
+			p.Percentage = 0
+		} else {
+			p.Percentage = percentageOf(p.CompletedCount, denominator)
+		}
 		habitsProgress = append(habitsProgress, *p)
+	}
+
+	overallPercentage := 0.0
+	if requiredTotal > 0 {
+		overallPercentage = percentageOf(completedTotal, requiredTotal)
 	}
 
 	return PeriodOverview{
@@ -110,7 +122,7 @@ func (uc GetPeriodOverviewUseCase) Execute(ctx context.Context, userID uuid.UUID
 		Offset:            offset,
 		Start:             start,
 		End:               end,
-		OverallPercentage: percentageOf(completedTotal, requiredTotal),
+		OverallPercentage: overallPercentage,
 		RequiredTotal:     requiredTotal,
 		CompletedTotal:    completedTotal,
 		Habits:            habitsProgress,
