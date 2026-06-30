@@ -49,7 +49,7 @@ func (uc GetReadingStatsUseCase) Execute(ctx context.Context, userID uuid.UUID, 
 		return ReadingStats{}, err
 	}
 
-	books, err := uc.readingLogs.CountBooksFinishedByUserAndDateRange(ctx, userID, start, end)
+	books, err := uc.readingLogs.CountBooksFinishedByUserAndDateRange(ctx, userID, start, end, u.Timezone)
 	if err != nil {
 		return ReadingStats{}, err
 	}

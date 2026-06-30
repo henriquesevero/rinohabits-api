@@ -93,7 +93,10 @@ func RequiredHabitsOn(habits []*domainhabit.Habit, day time.Time, timezone strin
 
 	for _, h := range habits {
 		createdDate, err := LocalToday(h.CreatedAt, timezone)
-		if err != nil || createdDate.After(day) {
+		if err != nil || !createdDate.Before(day) {
+			// the creation day itself is "setup day" and is never required:
+			// otherwise a habit created late at night would immediately show
+			// as a failed day for the few remaining minutes it existed.
 			continue
 		}
 		if h.IsRequiredOn(day.Weekday()) {
