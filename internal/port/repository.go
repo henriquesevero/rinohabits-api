@@ -46,5 +46,5 @@ type BookRepository interface {
 type ReadingLogRepository interface {
 	Upsert(ctx context.Context, log *readinglog.ReadingLog) error
 	SumPagesByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (int, error)
-	CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (int, error)
+	CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error)
 }
