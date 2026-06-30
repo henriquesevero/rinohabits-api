@@ -62,8 +62,11 @@ func (uc GetTrendUseCase) Execute(ctx context.Context, userID uuid.UUID, periodT
 				return nil, err
 			}
 
-			requiredTotal += len(required)
-			completedTotal += usecasehabit.CountCompleted(required, logsOnDay)
+			completedIDs := usecasehabit.CompletedHabitIDs(logsOnDay)
+			effective := usecasehabit.EffectiveRequiredHabits(required, cursor, u.Timezone, completedIDs)
+
+			requiredTotal += len(effective)
+			completedTotal += usecasehabit.CountCompleted(effective, logsOnDay)
 		}
 
 		percentage := 0.0

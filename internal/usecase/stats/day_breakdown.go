@@ -36,14 +36,19 @@ func computeDayBreakdown(
 	}
 
 	completedIDs := usecasehabit.CompletedHabitIDs(logsOnDay)
-	completedCount := usecasehabit.CountCompleted(required, logsOnDay)
+	effective := usecasehabit.EffectiveRequiredHabits(required, day, timezone, completedIDs)
+	if len(effective) == 0 {
+		return dayBreakdown{}, nil
+	}
+
+	completedCount := usecasehabit.CountCompleted(effective, logsOnDay)
 
 	ids := make([]uuid.UUID, 0, len(completedIDs))
-	for _, h := range required {
+	for _, h := range effective {
 		if completedIDs[h.ID] {
 			ids = append(ids, h.ID)
 		}
 	}
 
-	return dayBreakdown{requiredCount: len(required), completedCount: completedCount, completedHabitIDs: ids}, nil
+	return dayBreakdown{requiredCount: len(effective), completedCount: completedCount, completedHabitIDs: ids}, nil
 }

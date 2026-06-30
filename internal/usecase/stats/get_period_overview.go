@@ -80,8 +80,9 @@ func (uc GetPeriodOverviewUseCase) Execute(ctx context.Context, userID uuid.UUID
 		}
 
 		completedIDs := usecasehabit.CompletedHabitIDs(logsOnDay)
+		effective := usecasehabit.EffectiveRequiredHabits(required, cursor, u.Timezone, completedIDs)
 
-		for _, h := range required {
+		for _, h := range effective {
 			p := progressByHabit[h.ID]
 			p.RequiredCount++
 			requiredTotal++
