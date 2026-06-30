@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/henriquesevero/rinohabits-api/internal/domain/book"
+	"github.com/henriquesevero/rinohabits-api/internal/domain/course"
+	"github.com/henriquesevero/rinohabits-api/internal/domain/courselog"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/dailylog"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/habit"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/readinglog"
@@ -48,4 +50,18 @@ type ReadingLogRepository interface {
 	Upsert(ctx context.Context, log *readinglog.ReadingLog) error
 	SumPagesByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (int, error)
 	CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error)
+}
+
+type CourseRepository interface {
+	Create(ctx context.Context, c *course.Course) error
+	FindByID(ctx context.Context, id uuid.UUID) (*course.Course, error)
+	ListByUser(ctx context.Context, userID uuid.UUID) ([]*course.Course, error)
+	ListByUserAndStatus(ctx context.Context, userID uuid.UUID, status course.Status) ([]*course.Course, error)
+	Update(ctx context.Context, c *course.Course) error
+	UpdateCover(ctx context.Context, id uuid.UUID, coverURL string) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type CourseLogRepository interface {
+	Upsert(ctx context.Context, log *courselog.CourseLog) error
 }
