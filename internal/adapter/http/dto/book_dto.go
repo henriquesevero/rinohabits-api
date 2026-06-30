@@ -8,8 +8,8 @@ type CreateBookRequest struct {
 }
 
 type UpdateBookRequest struct {
-	Title      string  `json:"title"`
-	Author     string  `json:"author"`
+	Title      *string `json:"title"`
+	Author     *string `json:"author"`
 	TotalPages *int    `json:"total_pages"`
 	Status     string  `json:"status"`
 }
