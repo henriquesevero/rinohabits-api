@@ -56,11 +56,16 @@ func (uc GetDailyBreakdownUseCase) Execute(ctx context.Context, userID uuid.UUID
 			return nil, err
 		}
 
+		percentage := 0.0
+		if breakdown.requiredCount > 0 {
+			percentage = percentageOf(breakdown.completedCount, breakdown.requiredCount)
+		}
+
 		results = append(results, DailyStatus{
 			Date:           cursor,
 			RequiredCount:  breakdown.requiredCount,
 			CompletedCount: breakdown.completedCount,
-			Percentage:     percentageOf(breakdown.completedCount, breakdown.requiredCount),
+			Percentage:     percentage,
 		})
 	}
 

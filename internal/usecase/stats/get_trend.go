@@ -66,9 +66,14 @@ func (uc GetTrendUseCase) Execute(ctx context.Context, userID uuid.UUID, periodT
 			completedTotal += usecasehabit.CountCompleted(required, logsOnDay)
 		}
 
+		percentage := 0.0
+		if requiredTotal > 0 {
+			percentage = percentageOf(completedTotal, requiredTotal)
+		}
+
 		points = append(points, TrendPoint{
 			Label:      formatPeriodLabel(periodType, start),
-			Percentage: percentageOf(completedTotal, requiredTotal),
+			Percentage: percentage,
 		})
 	}
 
