@@ -5,6 +5,7 @@ type CreateHabitRequest struct {
 	Icon           string `json:"icon"`
 	Color          string `json:"color"`
 	ActiveWeekdays []int  `json:"active_weekdays"`
+	MonthlyTarget  *int   `json:"monthly_target"`
 }
 
 type HabitResponse struct {
@@ -13,6 +14,7 @@ type HabitResponse struct {
 	Icon           string `json:"icon"`
 	Color          string `json:"color"`
 	ActiveWeekdays []int  `json:"active_weekdays"`
+	MonthlyTarget  *int   `json:"monthly_target"`
 }
 
 type TodayHabitResponse struct {

@@ -35,6 +35,8 @@ func main() {
 			Pool:         pool,
 			TokenManager: tokenManager,
 			CORSOrigin:   cfg.CORSOrigin,
+			UploadsDir:   cfg.UploadsDir,
+			APIBaseURL:   cfg.APIBaseURL,
 		}),
 	}
 

@@ -6,8 +6,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/henriquesevero/rinohabits-api/internal/domain/book"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/dailylog"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/habit"
+	"github.com/henriquesevero/rinohabits-api/internal/domain/readinglog"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/user"
 )
 
@@ -21,10 +23,27 @@ type HabitRepository interface {
 	Create(ctx context.Context, h *habit.Habit) error
 	FindByID(ctx context.Context, id uuid.UUID) (*habit.Habit, error)
 	ListActiveByUser(ctx context.Context, userID uuid.UUID) ([]*habit.Habit, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type DailyLogRepository interface {
 	Create(ctx context.Context, log *dailylog.DailyLog) error
 	Delete(ctx context.Context, habitID uuid.UUID, logDate time.Time) error
 	ListByUserAndDate(ctx context.Context, userID uuid.UUID, logDate time.Time) ([]*dailylog.DailyLog, error)
+}
+
+type BookRepository interface {
+	Create(ctx context.Context, b *book.Book) error
+	FindByID(ctx context.Context, id uuid.UUID) (*book.Book, error)
+	ListByUser(ctx context.Context, userID uuid.UUID) ([]*book.Book, error)
+	ListByUserAndStatus(ctx context.Context, userID uuid.UUID, status book.Status) ([]*book.Book, error)
+	Update(ctx context.Context, b *book.Book) error
+	UpdateCover(ctx context.Context, id uuid.UUID, coverURL string) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type ReadingLogRepository interface {
+	Upsert(ctx context.Context, log *readinglog.ReadingLog) error
+	SumPagesByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (int, error)
+	CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (int, error)
 }

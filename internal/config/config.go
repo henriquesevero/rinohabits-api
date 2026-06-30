@@ -7,6 +7,8 @@ type Config struct {
 	DatabaseURL string
 	JWTSecret   string
 	CORSOrigin  string
+	UploadsDir  string
+	APIBaseURL  string
 }
 
 func Load() Config {
@@ -15,6 +17,8 @@ func Load() Config {
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://rinohabits:rinohabits@localhost:5432/rinohabits?sslmode=disable"),
 		JWTSecret:   getEnv("JWT_SECRET", "dev-secret-change-me"),
 		CORSOrigin:  getEnv("CORS_ORIGIN", "*"),
+		UploadsDir:  getEnv("UPLOADS_DIR", "./uploads"),
+		APIBaseURL:  getEnv("API_BASE_URL", "http://localhost:8090"),
 	}
 }
 

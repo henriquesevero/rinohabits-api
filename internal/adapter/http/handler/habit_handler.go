@@ -18,6 +18,7 @@ type HabitHandler struct {
 	listToday  usecasehabit.ListTodayHabitsUseCase
 	toggleLog  usecasehabit.ToggleHabitLogUseCase
 	calcStreak usecasehabit.CalculateStreakUseCase
+	delete     usecasehabit.DeleteHabitUseCase
 }
 
 func NewHabitHandler(
@@ -25,8 +26,9 @@ func NewHabitHandler(
 	listToday usecasehabit.ListTodayHabitsUseCase,
 	toggleLog usecasehabit.ToggleHabitLogUseCase,
 	calcStreak usecasehabit.CalculateStreakUseCase,
+	delete usecasehabit.DeleteHabitUseCase,
 ) HabitHandler {
-	return HabitHandler{create: create, listToday: listToday, toggleLog: toggleLog, calcStreak: calcStreak}
+	return HabitHandler{create: create, listToday: listToday, toggleLog: toggleLog, calcStreak: calcStreak, delete: delete}
 }
 
 func (h HabitHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +54,7 @@ func (h HabitHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Icon:           req.Icon,
 		Color:          req.Color,
 		ActiveWeekdays: req.ActiveWeekdays,
+		MonthlyTarget:  req.MonthlyTarget,
 	})
 	if err != nil {
 		if errors.Is(err, domainhabit.ErrNoActiveWeekday) {
@@ -125,6 +128,31 @@ func (h HabitHandler) ToggleLog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto.ToggleHabitLogResponse{IsCompleted: isCompleted})
 }
 
+func (h HabitHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	habitID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid habit id")
+		return
+	}
+
+	if err := h.delete.Execute(r.Context(), userID, habitID); err != nil {
+		if errors.Is(err, domainhabit.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "habit not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to delete habit")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func toHabitResponse(h *domainhabit.Habit) dto.HabitResponse {
 	return dto.HabitResponse{
 		ID:             h.ID.String(),
@@ -132,5 +160,6 @@ func toHabitResponse(h *domainhabit.Habit) dto.HabitResponse {
 		Icon:           h.Icon,
 		Color:          h.Color,
 		ActiveWeekdays: h.ActiveWeekdays,
+		MonthlyTarget:  h.MonthlyTarget,
 	}
 }

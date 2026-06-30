@@ -50,7 +50,7 @@ func (uc CalculateStreakUseCase) Execute(ctx context.Context, userID uuid.UUID) 
 	cursor := today
 
 	for !cursor.Before(floor) {
-		required := requiredHabitsOn(allHabits, cursor, u.Timezone)
+		required := RequiredHabitsOn(allHabits, cursor, u.Timezone)
 
 		if len(required) > 0 {
 			logsOnDay, err := uc.logs.ListByUserAndDate(ctx, userID, cursor)
@@ -59,7 +59,7 @@ func (uc CalculateStreakUseCase) Execute(ctx context.Context, userID uuid.UUID) 
 			}
 
 			switch {
-			case allCompleted(required, logsOnDay):
+			case CountCompleted(required, logsOnDay) == len(required):
 				streak++
 			case !cursor.Equal(today):
 				return streak, nil
@@ -88,7 +88,7 @@ func earliestHabitDate(habits []*domainhabit.Habit, fallback time.Time, timezone
 	return earliest, nil
 }
 
-func requiredHabitsOn(habits []*domainhabit.Habit, day time.Time, timezone string) []*domainhabit.Habit {
+func RequiredHabitsOn(habits []*domainhabit.Habit, day time.Time, timezone string) []*domainhabit.Habit {
 	required := make([]*domainhabit.Habit, 0, len(habits))
 
 	for _, h := range habits {
@@ -104,17 +104,23 @@ func requiredHabitsOn(habits []*domainhabit.Habit, day time.Time, timezone strin
 	return required
 }
 
-func allCompleted(required []*domainhabit.Habit, logs []*dailylog.DailyLog) bool {
+func CountCompleted(required []*domainhabit.Habit, logs []*dailylog.DailyLog) int {
+	completed := CompletedHabitIDs(logs)
+
+	count := 0
+	for _, h := range required {
+		if completed[h.ID] {
+			count++
+		}
+	}
+
+	return count
+}
+
+func CompletedHabitIDs(logs []*dailylog.DailyLog) map[uuid.UUID]bool {
 	completed := make(map[uuid.UUID]bool, len(logs))
 	for _, l := range logs {
 		completed[l.HabitID] = true
 	}
-
-	for _, h := range required {
-		if !completed[h.ID] {
-			return false
-		}
-	}
-
-	return true
+	return completed
 }
