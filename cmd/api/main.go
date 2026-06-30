@@ -28,7 +28,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	tokenManager := security.NewJWTTokenManager(cfg.JWTSecret, 7*24*time.Hour)
+	tokenManager := security.NewJWTTokenManager(cfg.JWTSecret, 30*24*time.Hour)
 
 	server := &http.Server{
 		Addr: ":" + cfg.Port,
