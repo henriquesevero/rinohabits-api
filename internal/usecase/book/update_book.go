@@ -13,8 +13,8 @@ import (
 type UpdateBookInput struct {
 	UserID     uuid.UUID
 	BookID     uuid.UUID
-	Title      string
-	Author     string
+	Title      *string
+	Author     *string
 	TotalPages *int
 	Status     domainbook.Status
 }
@@ -37,11 +37,15 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 		return nil, domainbook.ErrNotFound
 	}
 
-	if in.Title != "" {
-		b.Title = in.Title
+	if in.Title != nil && *in.Title != "" {
+		b.Title = *in.Title
 	}
-	b.Author = in.Author
-	b.TotalPages = in.TotalPages
+	if in.Author != nil {
+		b.Author = *in.Author
+	}
+	if in.TotalPages != nil {
+		b.TotalPages = in.TotalPages
+	}
 
 	if in.Status != "" && in.Status != b.Status {
 		if !in.Status.IsValid() {
