@@ -1,0 +1,9 @@
+.git
+.gitignore
+uploads/
+bin/
+tmp/
+*.md
+docker-compose.yml
+.env
+.env.*
