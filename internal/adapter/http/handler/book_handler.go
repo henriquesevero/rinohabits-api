@@ -2,10 +2,7 @@ package handler
 
 import (
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -29,8 +26,7 @@ type BookHandler struct {
 	delete          usecasebook.DeleteBookUseCase
 	readingStats    stats.GetReadingStatsUseCase
 	books           port.BookRepository
-	uploadsDir      string
-	apiBaseURL      string
+	storage         port.FileStorage
 }
 
 func NewBookHandler(
@@ -41,14 +37,13 @@ func NewBookHandler(
 	delete usecasebook.DeleteBookUseCase,
 	readingStats stats.GetReadingStatsUseCase,
 	books port.BookRepository,
-	uploadsDir string,
-	apiBaseURL string,
+	storage port.FileStorage,
 ) BookHandler {
 	return BookHandler{
 		create: create, list: list, update: update,
 		registerReading: registerReading, delete: delete,
 		readingStats: readingStats,
-		books: books, uploadsDir: uploadsDir, apiBaseURL: apiBaseURL,
+		books: books, storage: storage,
 	}
 }
 
@@ -277,33 +272,19 @@ func (h BookHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+	contentType, ok := allowedImageTypes[ext]
+	if !ok {
 		writeError(w, http.StatusBadRequest, "only jpg, png and webp are allowed")
 		return
 	}
 
-	dir := filepath.Join(h.uploadsDir, "books")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create upload dir")
-		return
-	}
-
-	filename := fmt.Sprintf("%s%s", bookID.String(), ext)
-	dest := filepath.Join(dir, filename)
-
-	out, err := os.Create(dest)
+	filename := "books/" + bookID.String() + ext
+	coverURL, err := h.storage.Upload(r.Context(), filename, file, contentType)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to save file")
-		return
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, file); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to write file")
+		writeError(w, http.StatusInternalServerError, "failed to upload cover")
 		return
 	}
 
-	coverURL := fmt.Sprintf("%s/uploads/books/%s", h.apiBaseURL, filename)
 	if err := h.books.UpdateCover(r.Context(), bookID, coverURL); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update cover url")
 		return

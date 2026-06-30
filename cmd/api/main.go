@@ -33,11 +33,13 @@ func main() {
 	server := &http.Server{
 		Addr: ":" + cfg.Port,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
-			Pool:         pool,
-			TokenManager: tokenManager,
-			CORSOrigin:   cfg.CORSOrigin,
-			UploadsDir:   cfg.UploadsDir,
-			APIBaseURL:   cfg.APIBaseURL,
+			Pool:               pool,
+			TokenManager:       tokenManager,
+			CORSOrigin:         cfg.CORSOrigin,
+			UploadsDir:         cfg.UploadsDir,
+			APIBaseURL:         cfg.APIBaseURL,
+			SupabaseURL:        cfg.SupabaseURL,
+			SupabaseServiceKey: cfg.SupabaseServiceKey,
 		}),
 	}
 
