@@ -76,6 +76,15 @@ func (r HabitRepository) ListActiveByUser(ctx context.Context, userID uuid.UUID)
 	return habits, rows.Err()
 }
 
+func (r HabitRepository) Update(ctx context.Context, h *habit.Habit) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE habits SET name = $1, icon = $2, color = $3, active_weekdays = $4, monthly_target = $5, updated_at = now()
+		 WHERE id = $6`,
+		h.Name, h.Icon, h.Color, toInt16Slice(h.ActiveWeekdays), h.MonthlyTarget, h.ID,
+	)
+	return err
+}
+
 func (r HabitRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	_, err := r.pool.Exec(ctx, `UPDATE habits SET deleted_at = now() WHERE id = $1`, id)
 	return err

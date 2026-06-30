@@ -55,6 +55,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasehabit.NewListTodayHabitsUseCase(habits, dailyLogs, systemClock, users),
 		usecasehabit.NewToggleHabitLogUseCase(habits, dailyLogs, systemClock, users),
 		usecasehabit.NewCalculateStreakUseCase(habits, dailyLogs, systemClock, users),
+		usecasehabit.NewUpdateHabitUseCase(habits),
 		usecasehabit.NewDeleteHabitUseCase(habits),
 	)
 
@@ -91,6 +92,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("POST /habits", protected(http.HandlerFunc(habitHandler.Create)))
 	mux.Handle("GET /habits/today", protected(http.HandlerFunc(habitHandler.Today)))
 	mux.Handle("POST /habits/{id}/toggle", protected(http.HandlerFunc(habitHandler.ToggleLog)))
+	mux.Handle("PATCH /habits/{id}", protected(http.HandlerFunc(habitHandler.Update)))
 	mux.Handle("DELETE /habits/{id}", protected(http.HandlerFunc(habitHandler.Delete)))
 	mux.Handle("GET /stats/overview", protected(http.HandlerFunc(statsHandler.Overview)))
 	mux.Handle("GET /stats/trend", protected(http.HandlerFunc(statsHandler.Trend)))
