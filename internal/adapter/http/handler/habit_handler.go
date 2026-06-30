@@ -18,6 +18,7 @@ type HabitHandler struct {
 	listToday  usecasehabit.ListTodayHabitsUseCase
 	toggleLog  usecasehabit.ToggleHabitLogUseCase
 	calcStreak usecasehabit.CalculateStreakUseCase
+	update     usecasehabit.UpdateHabitUseCase
 	delete     usecasehabit.DeleteHabitUseCase
 }
 
@@ -26,9 +27,10 @@ func NewHabitHandler(
 	listToday usecasehabit.ListTodayHabitsUseCase,
 	toggleLog usecasehabit.ToggleHabitLogUseCase,
 	calcStreak usecasehabit.CalculateStreakUseCase,
+	update usecasehabit.UpdateHabitUseCase,
 	delete usecasehabit.DeleteHabitUseCase,
 ) HabitHandler {
-	return HabitHandler{create: create, listToday: listToday, toggleLog: toggleLog, calcStreak: calcStreak, delete: delete}
+	return HabitHandler{create: create, listToday: listToday, toggleLog: toggleLog, calcStreak: calcStreak, update: update, delete: delete}
 }
 
 func (h HabitHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +128,54 @@ func (h HabitHandler) ToggleLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, dto.ToggleHabitLogResponse{IsCompleted: isCompleted})
+}
+
+func (h HabitHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	habitID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid habit id")
+		return
+	}
+
+	var req dto.UpdateHabitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	updated, err := h.update.Execute(r.Context(), usecasehabit.UpdateHabitInput{
+		UserID:         userID,
+		HabitID:        habitID,
+		Name:           req.Name,
+		Icon:           req.Icon,
+		Color:          req.Color,
+		ActiveWeekdays: req.ActiveWeekdays,
+		MonthlyTarget:  req.MonthlyTarget,
+	})
+	if err != nil {
+		if errors.Is(err, domainhabit.ErrNoActiveWeekday) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, domainhabit.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "habit not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to update habit")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toHabitResponse(updated))
 }
 
 func (h HabitHandler) Delete(w http.ResponseWriter, r *http.Request) {

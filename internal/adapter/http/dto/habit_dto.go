@@ -8,6 +8,14 @@ type CreateHabitRequest struct {
 	MonthlyTarget  *int   `json:"monthly_target"`
 }
 
+type UpdateHabitRequest struct {
+	Name           string `json:"name"`
+	Icon           string `json:"icon"`
+	Color          string `json:"color"`
+	ActiveWeekdays []int  `json:"active_weekdays"`
+	MonthlyTarget  *int   `json:"monthly_target"`
+}
+
 type HabitResponse struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`

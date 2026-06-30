@@ -24,6 +24,7 @@ type HabitRepository interface {
 	Create(ctx context.Context, h *habit.Habit) error
 	FindByID(ctx context.Context, id uuid.UUID) (*habit.Habit, error)
 	ListActiveByUser(ctx context.Context, userID uuid.UUID) ([]*habit.Habit, error)
+	Update(ctx context.Context, h *habit.Habit) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
