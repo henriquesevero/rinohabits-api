@@ -3,6 +3,8 @@ package push
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -87,7 +89,11 @@ func Send(t *notification.ReminderTarget, title, body, pubKey, privKey, email st
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("push rejected: HTTP %d — %s", resp.StatusCode, string(respBody))
+	}
 	return nil
 }
 
