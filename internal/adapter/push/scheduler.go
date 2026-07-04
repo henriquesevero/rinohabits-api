@@ -66,7 +66,7 @@ func (s *Scheduler) sendReminders(ctx context.Context, hour, minute int) {
 	}
 	log.Printf("push scheduler: sending to %d subscriber(s) at %02d:%02d BRT", len(targets), hour, minute)
 	for _, t := range targets {
-		if err := Send(t, "RinoHabits", formatBody(t.Incomplete), s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
+		if err := Send(t, firstName(t.UserName), formatBody(t.Incomplete), s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
 			log.Printf("push scheduler: send error: %v", err)
 		} else {
 			log.Printf("push scheduler: sent OK")
@@ -95,6 +95,15 @@ func Send(t *notification.ReminderTarget, title, body, pubKey, privKey, email st
 		return fmt.Errorf("push rejected: HTTP %d — %s", resp.StatusCode, string(respBody))
 	}
 	return nil
+}
+
+func firstName(name string) string {
+	for i, r := range name {
+		if r == ' ' {
+			return name[:i]
+		}
+	}
+	return name
 }
 
 func formatBody(n int) string {

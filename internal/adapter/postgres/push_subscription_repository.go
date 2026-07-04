@@ -58,12 +58,26 @@ func (r PushSubscriptionRepository) ListByUser(ctx context.Context, userID uuid.
 	return targets, rows.Err()
 }
 
-// ReminderTargets returns all subscriptions whose reminder time matches hour:minute.
+// ReminderTargets returns subscriptions matching hour:minute that have incomplete habits,
+// using Brazil timezone (BRT = UTC-3) for date comparison.
 func (r PushSubscriptionRepository) ReminderTargets(ctx context.Context, hour, minute int) ([]*notification.ReminderTarget, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT endpoint, p256dh, auth_key, 1
-		 FROM push_subscriptions
-		 WHERE reminder_hour = $1 AND reminder_minute = $2`,
+		`SELECT ps.endpoint, ps.p256dh, ps.auth_key, u.name, COUNT(h.id) AS incomplete
+		 FROM push_subscriptions ps
+		 JOIN users u ON u.id = ps.user_id
+		 JOIN habits h ON h.user_id = ps.user_id
+		   AND h.is_active
+		   AND h.deleted_at IS NULL
+		   AND EXTRACT(ISODOW FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::int = ANY(h.active_weekdays)
+		 WHERE ps.reminder_hour = $1
+		   AND ps.reminder_minute = $2
+		   AND NOT EXISTS (
+		       SELECT 1 FROM daily_logs dl
+		       WHERE dl.habit_id = h.id
+		         AND dl.log_date = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+		   )
+		 GROUP BY ps.endpoint, ps.p256dh, ps.auth_key, u.name
+		 HAVING COUNT(h.id) > 0`,
 		hour, minute,
 	)
 	if err != nil {
@@ -74,7 +88,7 @@ func (r PushSubscriptionRepository) ReminderTargets(ctx context.Context, hour, m
 	var targets []*notification.ReminderTarget
 	for rows.Next() {
 		t := &notification.ReminderTarget{}
-		if err := rows.Scan(&t.Endpoint, &t.P256DH, &t.Auth, &t.Incomplete); err != nil {
+		if err := rows.Scan(&t.Endpoint, &t.P256DH, &t.Auth, &t.UserName, &t.Incomplete); err != nil {
 			return nil, err
 		}
 		targets = append(targets, t)

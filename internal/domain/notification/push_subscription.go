@@ -18,8 +18,9 @@ type PushSubscription struct {
 }
 
 type ReminderTarget struct {
-	Endpoint     string
-	P256DH       string
-	Auth         string
-	Incomplete   int
+	Endpoint   string
+	P256DH     string
+	Auth       string
+	UserName   string
+	Incomplete int
 }
