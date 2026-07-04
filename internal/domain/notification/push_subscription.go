@@ -7,13 +7,14 @@ import (
 )
 
 type PushSubscription struct {
-	ID           uuid.UUID
-	UserID       uuid.UUID
-	Endpoint     string
-	P256DH       string
-	Auth         string
-	ReminderHour int
-	CreatedAt    time.Time
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	Endpoint       string
+	P256DH         string
+	Auth           string
+	ReminderHour   int
+	ReminderMinute int
+	CreatedAt      time.Time
 }
 
 type ReminderTarget struct {

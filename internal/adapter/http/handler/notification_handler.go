@@ -20,10 +20,11 @@ func NewNotificationHandler(repo postgres.PushSubscriptionRepository) Notificati
 }
 
 type subscribeRequest struct {
-	Endpoint     string `json:"endpoint"`
-	P256DH       string `json:"p256dh"`
-	Auth         string `json:"auth"`
-	ReminderHour int    `json:"reminder_hour"`
+	Endpoint       string `json:"endpoint"`
+	P256DH         string `json:"p256dh"`
+	Auth           string `json:"auth"`
+	ReminderHour   int    `json:"reminder_hour"`
+	ReminderMinute int    `json:"reminder_minute"`
 }
 
 func (h NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
@@ -43,14 +44,19 @@ func (h NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	if hour < 0 || hour > 23 {
 		hour = 20
 	}
+	minute := req.ReminderMinute
+	if minute < 0 || minute > 59 {
+		minute = 0
+	}
 
 	sub := &notification.PushSubscription{
-		ID:           uuid.New(),
-		UserID:       userID,
-		Endpoint:     req.Endpoint,
-		P256DH:       req.P256DH,
-		Auth:         req.Auth,
-		ReminderHour: hour,
+		ID:             uuid.New(),
+		UserID:         userID,
+		Endpoint:       req.Endpoint,
+		P256DH:         req.P256DH,
+		Auth:           req.Auth,
+		ReminderHour:   hour,
+		ReminderMinute: minute,
 	}
 
 	if err := h.repo.Save(r.Context(), sub); err != nil {

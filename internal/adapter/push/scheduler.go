@@ -40,22 +40,18 @@ func (s *Scheduler) Start(ctx context.Context) {
 			case <-time.After(time.Until(next)):
 			}
 
-			// Only act at the top of each hour
-			if time.Now().Minute() != 0 {
-				continue
-			}
-
-			s.sendReminders(ctx, time.Now().Hour())
+			now = time.Now()
+			s.sendReminders(ctx, now.Hour(), now.Minute())
 		}
 	}()
 }
 
-func (s *Scheduler) sendReminders(ctx context.Context, hour int) {
+func (s *Scheduler) sendReminders(ctx context.Context, hour, minute int) {
 	if s.vapidPrivateKey == "" || s.vapidPublicKey == "" {
 		return
 	}
 
-	targets, err := s.repo.ReminderTargetsForHour(ctx, hour)
+	targets, err := s.repo.ReminderTargets(ctx, hour, minute)
 	if err != nil {
 		log.Printf("push scheduler: query error: %v", err)
 		return
