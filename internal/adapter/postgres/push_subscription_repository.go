@@ -37,6 +37,27 @@ func (r PushSubscriptionRepository) DeleteByEndpoint(ctx context.Context, userID
 	return err
 }
 
+func (r PushSubscriptionRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]*notification.ReminderTarget, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT endpoint, p256dh, auth_key, 0 FROM push_subscriptions WHERE user_id = $1`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var targets []*notification.ReminderTarget
+	for rows.Next() {
+		t := &notification.ReminderTarget{}
+		if err := rows.Scan(&t.Endpoint, &t.P256DH, &t.Auth, &t.Incomplete); err != nil {
+			return nil, err
+		}
+		targets = append(targets, t)
+	}
+	return targets, rows.Err()
+}
+
 // ReminderTargets returns subscriptions matching the exact hour:minute
 // where the user still has incomplete habits for today.
 func (r PushSubscriptionRepository) ReminderTargets(ctx context.Context, hour, minute int) ([]*notification.ReminderTarget, error) {

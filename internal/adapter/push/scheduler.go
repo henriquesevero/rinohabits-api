@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/postgres"
+	"github.com/henriquesevero/rinohabits-api/internal/domain/notification"
 )
 
 type Scheduler struct {
@@ -29,10 +30,14 @@ func NewScheduler(pool *pgxpool.Pool, privateKey, publicKey, email string) *Sche
 }
 
 func (s *Scheduler) Start(ctx context.Context) {
+	if s.vapidPrivateKey == "" || s.vapidPublicKey == "" {
+		log.Println("push scheduler: VAPID keys not set — scheduler disabled")
+		return
+	}
+	log.Println("push scheduler: started")
 	go func() {
 		for {
 			now := time.Now()
-			// Wake up at the top of the next minute
 			next := now.Truncate(time.Minute).Add(time.Minute)
 			select {
 			case <-ctx.Done():
@@ -47,40 +52,41 @@ func (s *Scheduler) Start(ctx context.Context) {
 }
 
 func (s *Scheduler) sendReminders(ctx context.Context, hour, minute int) {
-	if s.vapidPrivateKey == "" || s.vapidPublicKey == "" {
-		return
-	}
-
 	targets, err := s.repo.ReminderTargets(ctx, hour, minute)
 	if err != nil {
 		log.Printf("push scheduler: query error: %v", err)
 		return
 	}
-
-	for _, t := range targets {
-		payload, _ := json.Marshal(map[string]string{
-			"title": "RinoHabits",
-			"body":  formatBody(t.Incomplete),
-		})
-
-		resp, err := webpush.SendNotification(payload, &webpush.Subscription{
-			Endpoint: t.Endpoint,
-			Keys: webpush.Keys{
-				P256dh: t.P256DH,
-				Auth:   t.Auth,
-			},
-		}, &webpush.Options{
-			VAPIDPublicKey:  s.vapidPublicKey,
-			VAPIDPrivateKey: s.vapidPrivateKey,
-			Subscriber:      "mailto:" + s.vapidEmail,
-			TTL:             3600,
-		})
-		if err != nil {
-			log.Printf("push scheduler: send error: %v", err)
-			continue
-		}
-		resp.Body.Close()
+	if len(targets) == 0 {
+		return
 	}
+	log.Printf("push scheduler: sending to %d subscriber(s) at %02d:%02d", len(targets), hour, minute)
+	for _, t := range targets {
+		if err := Send(t, "RinoHabits", formatBody(t.Incomplete), s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
+			log.Printf("push scheduler: send error: %v", err)
+		} else {
+			log.Printf("push scheduler: sent OK")
+		}
+	}
+}
+
+// Send delivers a single push notification to one target.
+func Send(t *notification.ReminderTarget, title, body, pubKey, privKey, email string) error {
+	payload, _ := json.Marshal(map[string]string{"title": title, "body": body})
+	resp, err := webpush.SendNotification(payload, &webpush.Subscription{
+		Endpoint: t.Endpoint,
+		Keys:     webpush.Keys{P256dh: t.P256DH, Auth: t.Auth},
+	}, &webpush.Options{
+		VAPIDPublicKey:  pubKey,
+		VAPIDPrivateKey: privKey,
+		Subscriber:      "mailto:" + email,
+		TTL:             3600,
+	})
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
 }
 
 func formatBody(n int) string {
