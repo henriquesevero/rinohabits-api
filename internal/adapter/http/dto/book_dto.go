@@ -5,6 +5,16 @@ type CreateBookRequest struct {
 	Author     string  `json:"author"`
 	TotalPages *int    `json:"total_pages"`
 	Status     string  `json:"status"`
+	CoverURL   *string `json:"cover_url"`
+}
+
+type GoogleBookResult struct {
+	GoogleID    string `json:"google_id"`
+	Title       string `json:"title"`
+	Author      string `json:"author"`
+	PageCount   int    `json:"page_count"`
+	Description string `json:"description"`
+	CoverURL    string `json:"cover_url"`
 }
 
 type UpdateBookRequest struct {

@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	neturl "net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,6 +30,7 @@ type BookHandler struct {
 	readingStats    stats.GetReadingStatsUseCase
 	books           port.BookRepository
 	storage         port.FileStorage
+	googleBooksKey  string
 }
 
 func NewBookHandler(
@@ -38,12 +42,14 @@ func NewBookHandler(
 	readingStats stats.GetReadingStatsUseCase,
 	books port.BookRepository,
 	storage port.FileStorage,
+	googleBooksKey string,
 ) BookHandler {
 	return BookHandler{
 		create: create, list: list, update: update,
 		registerReading: registerReading, delete: delete,
 		readingStats: readingStats,
 		books: books, storage: storage,
+		googleBooksKey: googleBooksKey,
 	}
 }
 
@@ -66,6 +72,7 @@ func (h BookHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Author:     req.Author,
 		TotalPages: req.TotalPages,
 		Status:     domainbook.Status(req.Status),
+		CoverURL:   req.CoverURL,
 	})
 	if err != nil {
 		if errors.Is(err, domainbook.ErrInvalidTitle) || errors.Is(err, domainbook.ErrInvalidStatus) {
@@ -291,6 +298,62 @@ func (h BookHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"cover_url": coverURL})
+}
+
+func (h BookHandler) SearchGoogle(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		writeJSON(w, http.StatusOK, []dto.GoogleBookResult{})
+		return
+	}
+
+	apiURL := fmt.Sprintf(
+		"https://www.googleapis.com/books/v1/volumes?q=%s&maxResults=10&key=%s",
+		neturl.QueryEscape(q), h.googleBooksKey,
+	)
+
+	resp, err := http.Get(apiURL) //nolint:noctx
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "failed to reach Google Books")
+		return
+	}
+	defer resp.Body.Close()
+
+	var gbResp struct {
+		Items []struct {
+			ID         string `json:"id"`
+			VolumeInfo struct {
+				Title       string   `json:"title"`
+				Authors     []string `json:"authors"`
+				PageCount   int      `json:"pageCount"`
+				Description string   `json:"description"`
+				ImageLinks  struct {
+					Thumbnail string `json:"thumbnail"`
+				} `json:"imageLinks"`
+			} `json:"volumeInfo"`
+		} `json:"items"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&gbResp); err != nil {
+		writeError(w, http.StatusBadGateway, "failed to parse Google Books response")
+		return
+	}
+
+	results := make([]dto.GoogleBookResult, 0, len(gbResp.Items))
+	for _, item := range gbResp.Items {
+		author := strings.Join(item.VolumeInfo.Authors, ", ")
+		coverURL := strings.ReplaceAll(item.VolumeInfo.ImageLinks.Thumbnail, "http://", "https://")
+		results = append(results, dto.GoogleBookResult{
+			GoogleID:    item.ID,
+			Title:       item.VolumeInfo.Title,
+			Author:      author,
+			PageCount:   item.VolumeInfo.PageCount,
+			Description: item.VolumeInfo.Description,
+			CoverURL:    coverURL,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, results)
 }
 
 func toBookResponse(b *domainbook.Book) dto.BookResponse {

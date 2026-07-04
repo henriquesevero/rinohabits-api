@@ -32,6 +32,7 @@ type Dependencies struct {
 	VAPIDPrivateKey    string
 	VAPIDPublicKey     string
 	VAPIDEmail         string
+	GoogleBooksAPIKey  string
 }
 
 func NewRouter(deps Dependencies) http.Handler {
@@ -90,6 +91,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		stats.NewGetReadingStatsUseCase(users, readingLogs, systemClock),
 		books,
 		fileStorage,
+		deps.GoogleBooksAPIKey,
 	)
 
 	courses := postgres.NewCourseRepository(deps.Pool)
@@ -135,6 +137,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("GET /stats/daily", protected(http.HandlerFunc(statsHandler.DailyBreakdown)))
 	mux.Handle("POST /books", protected(http.HandlerFunc(bookHandler.Create)))
 	mux.Handle("GET /books", protected(http.HandlerFunc(bookHandler.List)))
+	mux.Handle("GET /books/google-search", protected(http.HandlerFunc(bookHandler.SearchGoogle)))
 	mux.Handle("PATCH /books/{id}", protected(http.HandlerFunc(bookHandler.Update)))
 	mux.Handle("POST /books/{id}/reading", protected(http.HandlerFunc(bookHandler.RegisterReading)))
 	mux.Handle("POST /books/{id}/cover", protected(http.HandlerFunc(bookHandler.UploadCover)))

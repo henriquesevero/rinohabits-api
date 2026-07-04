@@ -46,6 +46,7 @@ func main() {
 			VAPIDPrivateKey:    cfg.VAPIDPrivateKey,
 			VAPIDPublicKey:     cfg.VAPIDPublicKey,
 			VAPIDEmail:         cfg.VAPIDEmail,
+			GoogleBooksAPIKey:  cfg.GoogleBooksAPIKey,
 		}),
 	}
 
