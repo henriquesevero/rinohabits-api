@@ -66,7 +66,7 @@ func (s *Scheduler) sendReminders(ctx context.Context, hour, minute int) {
 	}
 	log.Printf("push scheduler: sending to %d subscriber(s) at %02d:%02d BRT", len(targets), hour, minute)
 	for _, t := range targets {
-		if err := Send(t, firstName(t.UserName), formatBody(t.Incomplete), s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
+		if err := Send(t, "RinoHabits", formatBody(firstName(t.UserName), t.Incomplete), s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
 			log.Printf("push scheduler: send error: %v", err)
 		} else {
 			log.Printf("push scheduler: sent OK")
@@ -106,11 +106,11 @@ func firstName(name string) string {
 	return name
 }
 
-func formatBody(n int) string {
+func formatBody(name string, n int) string {
 	if n == 1 {
-		return "Você ainda tem 1 hábito para completar hoje!"
+		return name + ", você ainda tem 1 hábito para completar hoje!"
 	}
-	return "Você ainda tem " + itoa(n) + " hábitos para completar hoje!"
+	return name + ", você ainda tem " + itoa(n) + " hábitos para completar hoje!"
 }
 
 func itoa(n int) string {
