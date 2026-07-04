@@ -149,7 +149,6 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 	mux.Handle("POST /notifications/subscribe", protected(http.HandlerFunc(notificationHandler.Subscribe)))
 	mux.Handle("DELETE /notifications/subscribe", protected(http.HandlerFunc(notificationHandler.Unsubscribe)))
-	mux.Handle("POST /notifications/test", protected(http.HandlerFunc(notificationHandler.TestNotify)))
 
 	return middleware.CORS(deps.CORSOrigin)(mux)
 }

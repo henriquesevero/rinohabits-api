@@ -1,0 +1,3 @@
+ALTER TABLE push_subscriptions
+    ADD COLUMN IF NOT EXISTS reminder_hour   INT NOT NULL DEFAULT 20,
+    ADD COLUMN IF NOT EXISTS reminder_minute INT NOT NULL DEFAULT 0;

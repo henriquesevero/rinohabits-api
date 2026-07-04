@@ -15,6 +15,13 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/domain/notification"
 )
 
+// sendHours are the BRT hours at which reminders are sent.
+var sendHours = map[int]string{
+	9:  "morning",
+	15: "afternoon",
+	21: "evening",
+}
+
 type Scheduler struct {
 	repo            postgres.PushSubscriptionRepository
 	vapidPrivateKey string
@@ -50,28 +57,52 @@ func (s *Scheduler) Start(ctx context.Context) {
 			brt := time.FixedZone("BRT", -3*60*60)
 			now = time.Now().In(brt)
 			log.Printf("push scheduler: tick %02d:%02d BRT", now.Hour(), now.Minute())
-			s.sendReminders(ctx, now.Hour(), now.Minute())
+
+			slot, ok := sendHours[now.Hour()]
+			if ok && now.Minute() == 0 {
+				s.sendReminders(ctx, slot)
+			}
 		}
 	}()
 }
 
-func (s *Scheduler) sendReminders(ctx context.Context, hour, minute int) {
-	targets, err := s.repo.ReminderTargets(ctx, hour, minute)
+func (s *Scheduler) sendReminders(ctx context.Context, slot string) {
+	targets, err := s.repo.ReminderTargets(ctx)
 	if err != nil {
-		log.Printf("push scheduler: query error at %02d:%02d UTC: %v", hour, minute, err)
+		log.Printf("push scheduler: query error: %v", err)
 		return
 	}
 	if len(targets) == 0 {
+		log.Printf("push scheduler: no incomplete habits for slot %s", slot)
 		return
 	}
-	log.Printf("push scheduler: sending to %d subscriber(s) at %02d:%02d BRT", len(targets), hour, minute)
+	log.Printf("push scheduler: sending slot=%s to %d subscriber(s)", slot, len(targets))
 	for _, t := range targets {
-		if err := Send(t, "RinoHabits", formatBody(firstName(t.UserName), t.Incomplete), s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
+		title, body := buildMessage(slot, firstName(t.UserName), t.Incomplete)
+		if err := Send(t, title, body, s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
 			log.Printf("push scheduler: send error: %v", err)
 		} else {
-			log.Printf("push scheduler: sent OK")
+			log.Printf("push scheduler: sent OK to %s", firstName(t.UserName))
 		}
 	}
+}
+
+func buildMessage(slot, name string, incomplete int) (title, body string) {
+	switch slot {
+	case "morning":
+		return "RinoHabits", name + ", bom dia! Não esqueça dos seus hábitos hoje 💪"
+	case "afternoon":
+		return "RinoHabits", name + ", " + formatCount(incomplete) + " para completar hoje!"
+	default: // evening
+		return "RinoHabits", name + ", último aviso! " + formatCount(incomplete) + " — não perca sua sequência 🔥"
+	}
+}
+
+func formatCount(n int) string {
+	if n == 1 {
+		return "ainda falta 1 hábito"
+	}
+	return "ainda faltam " + itoa(n) + " hábitos"
 }
 
 // Send delivers a single push notification to one target.
@@ -104,13 +135,6 @@ func firstName(name string) string {
 		}
 	}
 	return name
-}
-
-func formatBody(name string, n int) string {
-	if n == 1 {
-		return name + ", você ainda tem 1 hábito para completar hoje!"
-	}
-	return name + ", você ainda tem " + itoa(n) + " hábitos para completar hoje!"
 }
 
 func itoa(n int) string {

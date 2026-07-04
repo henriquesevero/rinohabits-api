@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/middleware"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/postgres"
-	"github.com/henriquesevero/rinohabits-api/internal/adapter/push"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/notification"
 )
 
@@ -26,11 +24,9 @@ func NewNotificationHandler(repo postgres.PushSubscriptionRepository, pubKey, pr
 }
 
 type subscribeRequest struct {
-	Endpoint       string `json:"endpoint"`
-	P256DH         string `json:"p256dh"`
-	Auth           string `json:"auth"`
-	ReminderHour   int    `json:"reminder_hour"`
-	ReminderMinute int    `json:"reminder_minute"`
+	Endpoint string `json:"endpoint"`
+	P256DH   string `json:"p256dh"`
+	Auth     string `json:"auth"`
 }
 
 func (h NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
@@ -46,23 +42,12 @@ func (h NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hour := req.ReminderHour
-	if hour < 0 || hour > 23 {
-		hour = 20
-	}
-	minute := req.ReminderMinute
-	if minute < 0 || minute > 59 {
-		minute = 0
-	}
-
 	sub := &notification.PushSubscription{
-		ID:             uuid.New(),
-		UserID:         userID,
-		Endpoint:       req.Endpoint,
-		P256DH:         req.P256DH,
-		Auth:           req.Auth,
-		ReminderHour:   hour,
-		ReminderMinute: minute,
+		ID:       uuid.New(),
+		UserID:   userID,
+		Endpoint: req.Endpoint,
+		P256DH:   req.P256DH,
+		Auth:     req.Auth,
 	}
 
 	if err := h.repo.Save(r.Context(), sub); err != nil {
@@ -71,7 +56,7 @@ func (h NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("notifications: subscription saved for user %s at %02d:%02d", userID, hour, minute)
+	log.Printf("notifications: subscription saved for user %s", userID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -98,36 +83,3 @@ func (h NotificationHandler) Unsubscribe(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// TestNotify sends an immediate test notification to all subscriptions of the current user.
-func (h NotificationHandler) TestNotify(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "missing authenticated user")
-		return
-	}
-
-	targets, err := h.repo.ListByUser(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list subscriptions")
-		return
-	}
-	if len(targets) == 0 {
-		writeError(w, http.StatusNotFound, "no subscriptions found for this user")
-		return
-	}
-
-	var lastErr error
-	for _, t := range targets {
-		if err := push.Send(t, "RinoHabits", "Notificação de teste — funcionou! 🎉", h.vapidPublicKey, h.vapidPrivateKey, strings.TrimPrefix(h.vapidEmail, "mailto:")); err != nil {
-			log.Printf("notifications: test send error: %v", err)
-			lastErr = err
-		}
-	}
-
-	if lastErr != nil {
-		writeError(w, http.StatusBadGateway, "push send failed: "+lastErr.Error())
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-}
