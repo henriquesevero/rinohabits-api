@@ -54,13 +54,16 @@ func (s *Scheduler) Start(ctx context.Context) {
 func (s *Scheduler) sendReminders(ctx context.Context, hour, minute int) {
 	targets, err := s.repo.ReminderTargets(ctx, hour, minute)
 	if err != nil {
-		log.Printf("push scheduler: query error: %v", err)
+		log.Printf("push scheduler: query error at %02d:%02d UTC: %v", hour, minute, err)
 		return
 	}
 	if len(targets) == 0 {
+		if minute == 0 {
+			log.Printf("push scheduler: alive, no subscribers at %02d:00 UTC", hour)
+		}
 		return
 	}
-	log.Printf("push scheduler: sending to %d subscriber(s) at %02d:%02d", len(targets), hour, minute)
+	log.Printf("push scheduler: sending to %d subscriber(s) at %02d:%02d UTC", len(targets), hour, minute)
 	for _, t := range targets {
 		if err := Send(t, "RinoHabits", formatBody(t.Incomplete), s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
 			log.Printf("push scheduler: send error: %v", err)
