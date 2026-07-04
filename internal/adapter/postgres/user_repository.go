@@ -30,7 +30,7 @@ func (r UserRepository) Create(ctx context.Context, u *user.User) error {
 
 func (r UserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
 	return r.scanOne(ctx,
-		`SELECT id, name, email, password_hash, timezone, created_at, updated_at
+		`SELECT id, name, email, password_hash, timezone, avatar_url, created_at, updated_at
 		 FROM users WHERE email = $1`,
 		email,
 	)
@@ -38,7 +38,7 @@ func (r UserRepository) FindByEmail(ctx context.Context, email string) (*user.Us
 
 func (r UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	return r.scanOne(ctx,
-		`SELECT id, name, email, password_hash, timezone, created_at, updated_at
+		`SELECT id, name, email, password_hash, timezone, avatar_url, created_at, updated_at
 		 FROM users WHERE id = $1`,
 		id,
 	)
@@ -68,6 +68,14 @@ func (r UserRepository) UpdatePassword(ctx context.Context, id uuid.UUID, passwo
 	return err
 }
 
+func (r UserRepository) UpdateAvatarURL(ctx context.Context, id uuid.UUID, avatarURL string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET avatar_url = $1, updated_at = now() WHERE id = $2`,
+		avatarURL, id,
+	)
+	return err
+}
+
 func (r UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
 	return err
@@ -77,7 +85,7 @@ func (r UserRepository) scanOne(ctx context.Context, query string, args ...any) 
 	row := r.pool.QueryRow(ctx, query, args...)
 
 	var u user.User
-	err := row.Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Timezone, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Timezone, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
 	}

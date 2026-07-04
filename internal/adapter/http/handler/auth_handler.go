@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/dto"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/middleware"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/user"
+	"github.com/henriquesevero/rinohabits-api/internal/port"
 	"github.com/henriquesevero/rinohabits-api/internal/usecase/auth"
 )
 
@@ -18,6 +21,8 @@ type AuthHandler struct {
 	changeEmail    auth.ChangeEmailUseCase
 	changePassword auth.ChangePasswordUseCase
 	deleteAccount  auth.DeleteAccountUseCase
+	users          port.UserRepository
+	storage        port.FileStorage
 }
 
 func NewAuthHandler(
@@ -27,10 +32,13 @@ func NewAuthHandler(
 	changeEmail auth.ChangeEmailUseCase,
 	changePassword auth.ChangePasswordUseCase,
 	deleteAccount auth.DeleteAccountUseCase,
+	users port.UserRepository,
+	storage port.FileStorage,
 ) AuthHandler {
 	return AuthHandler{
 		register: register, login: login, me: me,
 		changeEmail: changeEmail, changePassword: changePassword, deleteAccount: deleteAccount,
+		users: users, storage: storage,
 	}
 }
 
@@ -109,7 +117,48 @@ func (h AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, dto.UserResponse{ID: u.ID.String(), Name: u.Name, Email: u.Email})
+	writeJSON(w, http.StatusOK, dto.UserResponse{ID: u.ID.String(), Name: u.Name, Email: u.Email, AvatarURL: u.AvatarURL})
+}
+
+func (h AuthHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "file too large (max 5MB)")
+		return
+	}
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "missing avatar file")
+		return
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	contentType, ok := allowedImageTypes[ext]
+	if !ok {
+		writeError(w, http.StatusBadRequest, "only jpg, png and webp are allowed")
+		return
+	}
+
+	filename := "avatars/" + userID.String() + ext
+	avatarURL, err := h.storage.Upload(r.Context(), filename, file, contentType)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to upload avatar")
+		return
+	}
+
+	if err := h.users.UpdateAvatarURL(r.Context(), userID, avatarURL); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save avatar")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"avatar_url": avatarURL})
 }
 
 func (h AuthHandler) ChangeEmail(w http.ResponseWriter, r *http.Request) {

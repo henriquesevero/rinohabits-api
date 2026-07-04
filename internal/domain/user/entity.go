@@ -12,6 +12,7 @@ type User struct {
 	Email        string
 	PasswordHash string
 	Timezone     string
+	AvatarURL    *string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

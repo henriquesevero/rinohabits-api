@@ -22,6 +22,7 @@ type UserRepository interface {
 	UpdateTimezone(ctx context.Context, id uuid.UUID, timezone string) error
 	UpdateEmail(ctx context.Context, id uuid.UUID, email string) error
 	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
+	UpdateAvatarURL(ctx context.Context, id uuid.UUID, avatarURL string) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
