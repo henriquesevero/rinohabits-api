@@ -3,7 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
+	"log"
 	"net/http"
 	neturl "net/url"
 	"path/filepath"
@@ -307,17 +308,25 @@ func (h BookHandler) SearchGoogle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiURL := fmt.Sprintf(
-		"https://www.googleapis.com/books/v1/volumes?q=%s&maxResults=10&key=%s",
-		neturl.QueryEscape(q), h.googleBooksKey,
-	)
+	apiURL := "https://www.googleapis.com/books/v1/volumes?q=" + neturl.QueryEscape(q) + "&maxResults=10&langRestrict=pt"
+	if h.googleBooksKey != "" {
+		apiURL += "&key=" + h.googleBooksKey
+	}
 
 	resp, err := http.Get(apiURL) //nolint:noctx
 	if err != nil {
+		log.Printf("books: google search network error: %v", err)
 		writeError(w, http.StatusBadGateway, "failed to reach Google Books")
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("books: google search HTTP %d: %s", resp.StatusCode, body)
+		writeError(w, http.StatusBadGateway, "Google Books returned an error")
+		return
+	}
 
 	var gbResp struct {
 		Items []struct {
@@ -335,6 +344,7 @@ func (h BookHandler) SearchGoogle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&gbResp); err != nil {
+		log.Printf("books: google search decode error: %v", err)
 		writeError(w, http.StatusBadGateway, "failed to parse Google Books response")
 		return
 	}
