@@ -11,6 +11,9 @@ type Config struct {
 	APIBaseURL         string
 	SupabaseURL        string
 	SupabaseServiceKey string
+	VAPIDPrivateKey    string
+	VAPIDPublicKey     string
+	VAPIDEmail         string
 }
 
 func Load() Config {
@@ -23,6 +26,9 @@ func Load() Config {
 		APIBaseURL:         getEnv("API_BASE_URL", "http://localhost:8090"),
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
+		VAPIDPrivateKey:    getEnv("VAPID_PRIVATE_KEY", ""),
+		VAPIDPublicKey:     getEnv("VAPID_PUBLIC_KEY", ""),
+		VAPIDEmail:         getEnv("VAPID_EMAIL", "contato@henriquesevero.com"),
 	}
 }
 

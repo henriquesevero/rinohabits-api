@@ -29,6 +29,9 @@ type Dependencies struct {
 	APIBaseURL         string
 	SupabaseURL        string
 	SupabaseServiceKey string
+	VAPIDPrivateKey    string
+	VAPIDPublicKey     string
+	VAPIDEmail         string
 }
 
 func NewRouter(deps Dependencies) http.Handler {
@@ -102,6 +105,9 @@ func NewRouter(deps Dependencies) http.Handler {
 		fileStorage,
 	)
 
+	pushSubs := postgres.NewPushSubscriptionRepository(deps.Pool)
+	notificationHandler := handler.NewNotificationHandler(pushSubs)
+
 	statsHandler := handler.NewStatsHandler(
 		stats.NewGetPeriodOverviewUseCase(users, habits, dailyLogs, systemClock),
 		stats.NewGetTrendUseCase(users, habits, dailyLogs, systemClock),
@@ -141,6 +147,8 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("POST /courses/{id}/cover", protected(http.HandlerFunc(courseHandler.UploadCover)))
 	mux.Handle("DELETE /courses/{id}", protected(http.HandlerFunc(courseHandler.Delete)))
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
+	mux.Handle("POST /notifications/subscribe", protected(http.HandlerFunc(notificationHandler.Subscribe)))
+	mux.Handle("DELETE /notifications/subscribe", protected(http.HandlerFunc(notificationHandler.Unsubscribe)))
 
 	return middleware.CORS(deps.CORSOrigin)(mux)
 }

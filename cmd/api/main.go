@@ -12,6 +12,7 @@ import (
 
 	httpapi "github.com/henriquesevero/rinohabits-api/internal/adapter/http"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/postgres"
+	"github.com/henriquesevero/rinohabits-api/internal/adapter/push"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/security"
 	"github.com/henriquesevero/rinohabits-api/internal/config"
 )
@@ -30,6 +31,8 @@ func main() {
 
 	tokenManager := security.NewJWTTokenManager(cfg.JWTSecret, 30*24*time.Hour)
 
+	push.NewScheduler(pool, cfg.VAPIDPrivateKey, cfg.VAPIDPublicKey, cfg.VAPIDEmail).Start(ctx)
+
 	server := &http.Server{
 		Addr: ":" + cfg.Port,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
@@ -40,6 +43,9 @@ func main() {
 			APIBaseURL:         cfg.APIBaseURL,
 			SupabaseURL:        cfg.SupabaseURL,
 			SupabaseServiceKey: cfg.SupabaseServiceKey,
+			VAPIDPrivateKey:    cfg.VAPIDPrivateKey,
+			VAPIDPublicKey:     cfg.VAPIDPublicKey,
+			VAPIDEmail:         cfg.VAPIDEmail,
 		}),
 	}
 
