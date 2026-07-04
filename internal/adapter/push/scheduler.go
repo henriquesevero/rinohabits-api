@@ -45,7 +45,8 @@ func (s *Scheduler) Start(ctx context.Context) {
 			case <-time.After(time.Until(next)):
 			}
 
-			now = time.Now()
+			brt := time.FixedZone("BRT", -3*60*60)
+			now = time.Now().In(brt)
 			s.sendReminders(ctx, now.Hour(), now.Minute())
 		}
 	}()
