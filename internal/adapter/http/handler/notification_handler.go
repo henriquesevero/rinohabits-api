@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -117,7 +118,7 @@ func (h NotificationHandler) TestNotify(w http.ResponseWriter, r *http.Request) 
 
 	var lastErr error
 	for _, t := range targets {
-		if err := push.Send(t, "RinoHabits", "Notificação de teste — funcionou! 🎉", h.vapidPublicKey, h.vapidPrivateKey, h.vapidEmail); err != nil {
+		if err := push.Send(t, "RinoHabits", "Notificação de teste — funcionou! 🎉", h.vapidPublicKey, h.vapidPrivateKey, strings.TrimPrefix(h.vapidEmail, "mailto:")); err != nil {
 			log.Printf("notifications: test send error: %v", err)
 			lastErr = err
 		}

@@ -83,7 +83,7 @@ func Send(t *notification.ReminderTarget, title, body, pubKey, privKey, email st
 	}, &webpush.Options{
 		VAPIDPublicKey:  pubKey,
 		VAPIDPrivateKey: privKey,
-		Subscriber:      "mailto:" + email,
+		Subscriber:      email,
 		TTL:             3600,
 	})
 	if err != nil {
