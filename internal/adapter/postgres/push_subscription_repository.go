@@ -58,26 +58,12 @@ func (r PushSubscriptionRepository) ListByUser(ctx context.Context, userID uuid.
 	return targets, rows.Err()
 }
 
-// ReminderTargets returns subscriptions matching the exact hour:minute
-// where the user still has incomplete habits for today.
+// ReminderTargets returns all subscriptions whose reminder time matches hour:minute.
 func (r PushSubscriptionRepository) ReminderTargets(ctx context.Context, hour, minute int) ([]*notification.ReminderTarget, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT ps.endpoint, ps.p256dh, ps.auth_key, COUNT(h.id) AS incomplete
-		 FROM push_subscriptions ps
-		 JOIN habits h
-		   ON h.user_id = ps.user_id
-		  AND h.is_active
-		  AND h.deleted_at IS NULL
-		  AND EXTRACT(ISODOW FROM CURRENT_DATE)::int = ANY(h.active_weekdays)
-		 WHERE ps.reminder_hour = $1
-		   AND ps.reminder_minute = $2
-		   AND NOT EXISTS (
-		       SELECT 1 FROM daily_logs dl
-		       WHERE dl.habit_id = h.id
-		         AND dl.log_date = CURRENT_DATE
-		   )
-		 GROUP BY ps.endpoint, ps.p256dh, ps.auth_key
-		 HAVING COUNT(h.id) > 0`,
+		`SELECT endpoint, p256dh, auth_key, 1
+		 FROM push_subscriptions
+		 WHERE reminder_hour = $1 AND reminder_minute = $2`,
 		hour, minute,
 	)
 	if err != nil {
