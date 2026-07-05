@@ -73,6 +73,26 @@ func (h HabitHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toHabitResponse(created))
 }
 
+func (h HabitHandler) ListAll(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	habits, err := h.habits.ListActiveByUser(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list habits")
+		return
+	}
+
+	resp := make([]dto.HabitResponse, 0, len(habits))
+	for _, h := range habits {
+		resp = append(resp, toHabitResponse(h))
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (h HabitHandler) Today(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
