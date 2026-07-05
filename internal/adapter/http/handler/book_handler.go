@@ -313,7 +313,12 @@ func (h BookHandler) SearchGoogle(w http.ResponseWriter, r *http.Request) {
 		apiURL += "&key=" + h.googleBooksKey
 	}
 
-	resp, err := http.Get(apiURL) //nolint:noctx
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, apiURL, nil)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to build request")
+		return
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("books: google search network error: %v", err)
 		writeError(w, http.StatusBadGateway, "failed to reach Google Books")
