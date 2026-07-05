@@ -94,7 +94,6 @@ func NewRouter(deps Dependencies) http.Handler {
 		stats.NewGetReadingStatsUseCase(users, readingLogs, systemClock),
 		books,
 		fileStorage,
-		deps.GoogleBooksAPIKey,
 	)
 
 	courses := postgres.NewCourseRepository(deps.Pool)
@@ -150,7 +149,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("GET /gamification/ranking", protected(http.HandlerFunc(gamificationHandler.Ranking)))
 	mux.Handle("POST /books", protected(http.HandlerFunc(bookHandler.Create)))
 	mux.Handle("GET /books", protected(http.HandlerFunc(bookHandler.List)))
-	mux.Handle("GET /books/google-search", protected(http.HandlerFunc(bookHandler.SearchGoogle)))
+	mux.Handle("GET /books/search", protected(http.HandlerFunc(bookHandler.SearchBooks)))
 	mux.Handle("PATCH /books/{id}", protected(http.HandlerFunc(bookHandler.Update)))
 	mux.Handle("POST /books/{id}/reading", protected(http.HandlerFunc(bookHandler.RegisterReading)))
 	mux.Handle("POST /books/{id}/cover", protected(http.HandlerFunc(bookHandler.UploadCover)))

@@ -8,13 +8,12 @@ type CreateBookRequest struct {
 	CoverURL   *string `json:"cover_url"`
 }
 
-type GoogleBookResult struct {
-	GoogleID    string `json:"google_id"`
-	Title       string `json:"title"`
-	Author      string `json:"author"`
-	PageCount   int    `json:"page_count"`
-	Description string `json:"description"`
-	CoverURL    string `json:"cover_url"`
+type BookSearchResult struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Author    string `json:"author"`
+	PageCount int    `json:"page_count"`
+	CoverURL  string `json:"cover_url"`
 }
 
 type UpdateBookRequest struct {
