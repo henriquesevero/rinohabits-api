@@ -1,12 +1,22 @@
 package handler
 
 import (
+	"crypto/md5"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/dto"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/middleware"
 	"github.com/henriquesevero/rinohabits-api/internal/usecase/stats"
 )
+
+func gravatarURL(email string) string {
+	lower := strings.TrimSpace(strings.ToLower(email))
+	hash := fmt.Sprintf("%x", md5.Sum([]byte(lower)))
+	url := fmt.Sprintf("https://www.gravatar.com/avatar/%s?d=mp&s=80", hash)
+	return url
+}
 
 type GamificationHandler struct {
 	getGamification stats.GetGamificationUseCase
@@ -62,10 +72,15 @@ func (h GamificationHandler) Ranking(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]dto.RankEntryResponse, 0, len(entries))
 	for _, e := range entries {
+		avatarURL := e.User.AvatarURL
+		if avatarURL == nil {
+			url := gravatarURL(e.User.Email)
+			avatarURL = &url
+		}
 		resp = append(resp, dto.RankEntryResponse{
 			UserID:        e.User.ID.String(),
 			Name:          e.User.Name,
-			AvatarURL:     e.User.AvatarURL,
+			AvatarURL:     avatarURL,
 			TotalXP:       e.Result.TotalXP,
 			Level:         e.Result.Level,
 			CurrentStreak: e.Result.CurrentStreak,
