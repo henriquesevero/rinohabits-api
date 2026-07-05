@@ -43,7 +43,7 @@ func (uc GetGamificationUseCase) Execute(ctx context.Context, userID uuid.UUID) 
 		return GamificationResult{}, err
 	}
 
-	totalPages, err := uc.reading.SumAllPagesByUser(ctx, userID)
+	monthlyPages, err := uc.reading.ListMonthlyPagesByUser(ctx, userID)
 	if err != nil {
 		return GamificationResult{}, err
 	}
@@ -53,7 +53,7 @@ func (uc GetGamificationUseCase) Execute(ctx context.Context, userID uuid.UUID) 
 		return GamificationResult{}, err
 	}
 
-	result := computeGamification(habits, allLogs, totalPages, streak, u.Timezone)
+	result := computeGamification(habits, allLogs, monthlyPages, streak, u.Timezone)
 	result.CurrentStreak = streak
 	return result, nil
 }

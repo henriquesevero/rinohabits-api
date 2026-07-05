@@ -9,6 +9,7 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/domain/dailylog"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/habit"
 	usecasehabit "github.com/henriquesevero/rinohabits-api/internal/usecase/habit"
+	"github.com/henriquesevero/rinohabits-api/internal/port"
 )
 
 type GamificationResult struct {
@@ -67,18 +68,26 @@ func medalFromPct(pct float64) string {
 	}
 }
 
-func computeGamification(habits []*habit.Habit, allLogs []*dailylog.DailyLog, totalPages int, currentStreak int, timezone string) GamificationResult {
-	if len(habits) == 0 && len(allLogs) == 0 {
-		pages := (totalPages / 10) * 5
-		level := levelFromXP(pages)
-		return GamificationResult{
-			TotalXP:        pages,
-			Level:          level,
-			XPInCurrentLevel: pages - xpForLevel(level),
-			XPForNextLevel: xpForLevel(level+1) - xpForLevel(level),
-			TotalPagesRead: totalPages,
-			MonthlyMedal:   "none",
-		}
+func readingBonus(pages int) int {
+	switch {
+	case pages >= 300:
+		return 300
+	case pages >= 150:
+		return 150
+	case pages >= 50:
+		return 75
+	case pages >= 1:
+		return 25
+	default:
+		return 0
+	}
+}
+
+func computeGamification(habits []*habit.Habit, allLogs []*dailylog.DailyLog, monthlyPages []port.MonthlyPages, currentStreak int, timezone string) GamificationResult {
+	// Total pages read (for display)
+	totalPages := 0
+	for _, mp := range monthlyPages {
+		totalPages += mp.Pages
 	}
 
 	// Group completed habits by date
@@ -135,10 +144,12 @@ func computeGamification(habits []*habit.Habit, allLogs []*dailylog.DailyLog, to
 		}
 	}
 
-	// Pages XP: 5 per 10 pages
-	xp += (totalPages / 10) * 5
+	// Reading bonus: fixed XP tier per month (resets each month)
+	for _, mp := range monthlyPages {
+		xp += readingBonus(mp.Pages)
+	}
 
-	// Streak milestone (current streak only, not cumulative)
+	// Streak milestone (current streak only)
 	switch {
 	case currentStreak >= 30:
 		xp += 600
@@ -148,7 +159,7 @@ func computeGamification(habits []*habit.Habit, allLogs []*dailylog.DailyLog, to
 		xp += 100
 	}
 
-	// Monthly bonus XP (all months including current)
+	// Monthly habit bonus (all months including current)
 	for mk, perfectDays := range perfectByMonth {
 		activeDays := activeByMonth[mk]
 		if activeDays == 0 {

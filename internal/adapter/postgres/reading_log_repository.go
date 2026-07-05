@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/henriquesevero/rinohabits-api/internal/domain/readinglog"
+	"github.com/henriquesevero/rinohabits-api/internal/port"
 )
 
 type ReadingLogRepository struct {
@@ -45,6 +46,33 @@ func (r ReadingLogRepository) SumAllPagesByUser(ctx context.Context, userID uuid
 		userID,
 	).Scan(&total)
 	return total, err
+}
+
+func (r ReadingLogRepository) ListMonthlyPagesByUser(ctx context.Context, userID uuid.UUID) ([]port.MonthlyPages, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT EXTRACT(YEAR FROM log_date)::int, EXTRACT(MONTH FROM log_date)::int, COALESCE(SUM(pages_read), 0)
+		 FROM reading_logs
+		 WHERE user_id = $1
+		 GROUP BY 1, 2
+		 ORDER BY 1, 2`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []port.MonthlyPages
+	for rows.Next() {
+		var mp port.MonthlyPages
+		var month int
+		if err := rows.Scan(&mp.Year, &month, &mp.Pages); err != nil {
+			return nil, err
+		}
+		mp.Month = time.Month(month)
+		result = append(result, mp)
+	}
+	return result, rows.Err()
 }
 
 func (r ReadingLogRepository) CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error) {

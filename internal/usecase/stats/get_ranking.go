@@ -55,7 +55,7 @@ func (uc GetRankingUseCase) Execute(ctx context.Context, currentUserID uuid.UUID
 			continue
 		}
 
-		totalPages, err := uc.reading.SumAllPagesByUser(ctx, u.ID)
+		monthlyPages, err := uc.reading.ListMonthlyPagesByUser(ctx, u.ID)
 		if err != nil {
 			continue
 		}
@@ -65,7 +65,7 @@ func (uc GetRankingUseCase) Execute(ctx context.Context, currentUserID uuid.UUID
 			streak = 0
 		}
 
-		result := computeGamification(habits, allLogs, totalPages, streak, u.Timezone)
+		result := computeGamification(habits, allLogs, monthlyPages, streak, u.Timezone)
 		result.CurrentStreak = streak
 
 		entries = append(entries, RankEntry{User: u, Result: result})
