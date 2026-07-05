@@ -9,6 +9,7 @@ import (
 type Status string
 
 const (
+	StatusOnShelf    Status = "na_estante"
 	StatusWantToRead Status = "quero_ler"
 	StatusReading    Status = "lendo"
 	StatusRead       Status = "lido"
@@ -16,7 +17,7 @@ const (
 
 func (s Status) IsValid() bool {
 	switch s {
-	case StatusWantToRead, StatusReading, StatusRead:
+	case StatusOnShelf, StatusWantToRead, StatusReading, StatusRead:
 		return true
 	default:
 		return false
