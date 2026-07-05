@@ -194,6 +194,37 @@ func (h BookHandler) RegisterReading(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toBookResponse(b))
 }
 
+func (h BookHandler) Reorder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.ReorderBooksRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.IDs))
+	for _, raw := range req.IDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid book id: "+raw)
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	if err := h.books.ReorderBooks(r.Context(), userID, ids); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reorder books")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h BookHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {

@@ -50,6 +50,7 @@ type BookRepository interface {
 	Update(ctx context.Context, b *book.Book) error
 	UpdateCover(ctx context.Context, id uuid.UUID, coverURL string) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	ReorderBooks(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 }
 
 type MonthlyPages struct {

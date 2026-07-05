@@ -28,6 +28,10 @@ type RegisterReadingRequest struct {
 	PagesReadNow int `json:"pages_read_now"`
 }
 
+type ReorderBooksRequest struct {
+	IDs []string `json:"ids"`
+}
+
 type BookResponse struct {
 	ID          string  `json:"id"`
 	Title       string  `json:"title"`

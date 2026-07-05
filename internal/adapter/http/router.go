@@ -153,6 +153,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("POST /books/{id}/cover", protected(http.HandlerFunc(bookHandler.UploadCover)))
 	mux.Handle("DELETE /books/{id}", protected(http.HandlerFunc(bookHandler.Delete)))
 	mux.Handle("GET /books/reading-stats", protected(http.HandlerFunc(bookHandler.ReadingStats)))
+	mux.Handle("PATCH /books/reorder", protected(http.HandlerFunc(bookHandler.Reorder)))
 	mux.Handle("POST /courses", protected(http.HandlerFunc(courseHandler.Create)))
 	mux.Handle("GET /courses", protected(http.HandlerFunc(courseHandler.List)))
 	mux.Handle("PATCH /courses/{id}", protected(http.HandlerFunc(courseHandler.Update)))
