@@ -79,6 +79,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasehabit.NewCalculateStreakUseCase(habits, dailyLogs, systemClock, users),
 		usecasehabit.NewUpdateHabitUseCase(habits),
 		usecasehabit.NewDeleteHabitUseCase(habits),
+		habits,
 	)
 
 	books := postgres.NewBookRepository(deps.Pool)
@@ -139,6 +140,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("POST /habits/{id}/toggle", protected(http.HandlerFunc(habitHandler.ToggleLog)))
 	mux.Handle("PATCH /habits/{id}", protected(http.HandlerFunc(habitHandler.Update)))
 	mux.Handle("DELETE /habits/{id}", protected(http.HandlerFunc(habitHandler.Delete)))
+	mux.Handle("PATCH /habits/reorder", protected(http.HandlerFunc(habitHandler.Reorder)))
 	mux.Handle("GET /stats/overview", protected(http.HandlerFunc(statsHandler.Overview)))
 	mux.Handle("GET /stats/trend", protected(http.HandlerFunc(statsHandler.Trend)))
 	mux.Handle("GET /stats/calendar", protected(http.HandlerFunc(statsHandler.Calendar)))

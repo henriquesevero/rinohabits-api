@@ -39,3 +39,7 @@ type TodayDashboardResponse struct {
 type ToggleHabitLogResponse struct {
 	IsCompleted bool `json:"is_completed"`
 }
+
+type ReorderHabitsRequest struct {
+	IDs []string `json:"ids"`
+}

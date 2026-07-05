@@ -25,8 +25,9 @@ func NewHabitRepository(pool *pgxpool.Pool) HabitRepository {
 
 func (r HabitRepository) Create(ctx context.Context, h *habit.Habit) error {
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO habits (id, user_id, name, icon, color, active_weekdays, monthly_target)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		`INSERT INTO habits (id, user_id, name, icon, color, active_weekdays, monthly_target, sort_order)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7,
+		   (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM habits WHERE user_id = $2 AND deleted_at IS NULL))`,
 		h.ID, h.UserID, h.Name, h.Icon, h.Color, toInt16Slice(h.ActiveWeekdays), h.MonthlyTarget,
 	)
 	return err
@@ -56,7 +57,7 @@ func (r HabitRepository) ListActiveByUser(ctx context.Context, userID uuid.UUID)
 		`SELECT id, user_id, name, COALESCE(icon, ''), COALESCE(color, ''), active_weekdays, monthly_target, is_active, created_at, updated_at
 		 FROM habits
 		 WHERE user_id = $1 AND is_active AND deleted_at IS NULL
-		 ORDER BY created_at`,
+		 ORDER BY sort_order ASC, created_at ASC`,
 		userID,
 	)
 	if err != nil {
@@ -88,6 +89,14 @@ func (r HabitRepository) Update(ctx context.Context, h *habit.Habit) error {
 func (r HabitRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	_, err := r.pool.Exec(ctx, `UPDATE habits SET deleted_at = now() WHERE id = $1`, id)
 	return err
+}
+
+func (r HabitRepository) ReorderHabits(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
+	batch := &pgx.Batch{}
+	for i, id := range ids {
+		batch.Queue(`UPDATE habits SET sort_order = $1 WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL`, i, id, userID)
+	}
+	return r.pool.SendBatch(ctx, batch).Close()
 }
 
 func scanHabit(row rowScanner) (*habit.Habit, error) {

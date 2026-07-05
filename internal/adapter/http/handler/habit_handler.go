@@ -10,6 +10,7 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/dto"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/middleware"
 	domainhabit "github.com/henriquesevero/rinohabits-api/internal/domain/habit"
+	"github.com/henriquesevero/rinohabits-api/internal/port"
 	usecasehabit "github.com/henriquesevero/rinohabits-api/internal/usecase/habit"
 )
 
@@ -20,6 +21,7 @@ type HabitHandler struct {
 	calcStreak usecasehabit.CalculateStreakUseCase
 	update     usecasehabit.UpdateHabitUseCase
 	delete     usecasehabit.DeleteHabitUseCase
+	habits     port.HabitRepository
 }
 
 func NewHabitHandler(
@@ -29,8 +31,9 @@ func NewHabitHandler(
 	calcStreak usecasehabit.CalculateStreakUseCase,
 	update usecasehabit.UpdateHabitUseCase,
 	delete usecasehabit.DeleteHabitUseCase,
+	habits port.HabitRepository,
 ) HabitHandler {
-	return HabitHandler{create: create, listToday: listToday, toggleLog: toggleLog, calcStreak: calcStreak, update: update, delete: delete}
+	return HabitHandler{create: create, listToday: listToday, toggleLog: toggleLog, calcStreak: calcStreak, update: update, delete: delete, habits: habits}
 }
 
 func (h HabitHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -197,6 +200,37 @@ func (h HabitHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "failed to delete habit")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h HabitHandler) Reorder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.ReorderHabitsRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.IDs))
+	for _, raw := range req.IDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid habit id: "+raw)
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	if err := h.habits.ReorderHabits(r.Context(), userID, ids); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reorder habits")
 		return
 	}
 
