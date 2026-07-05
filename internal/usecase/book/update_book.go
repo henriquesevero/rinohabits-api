@@ -11,12 +11,13 @@ import (
 )
 
 type UpdateBookInput struct {
-	UserID     uuid.UUID
-	BookID     uuid.UUID
-	Title      *string
-	Author     *string
-	TotalPages *int
-	Status     domainbook.Status
+	UserID      uuid.UUID
+	BookID      uuid.UUID
+	Title       *string
+	Author      *string
+	TotalPages  *int
+	Status      domainbook.Status
+	CurrentPage *int
 }
 
 type UpdateBookUseCase struct {
@@ -55,6 +56,9 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 		if in.Status == domainbook.StatusReading && b.StartedAt == nil {
 			b.StartedAt = &now
 		}
+		if in.Status == domainbook.StatusReading {
+			b.FinishedAt = nil
+		}
 		if in.Status == domainbook.StatusRead && b.FinishedAt == nil {
 			b.FinishedAt = &now
 		}
@@ -64,6 +68,10 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 			b.CurrentPage = 0
 		}
 		b.Status = in.Status
+	}
+
+	if in.CurrentPage != nil && *in.CurrentPage >= 0 {
+		b.CurrentPage = *in.CurrentPage
 	}
 
 	if err := uc.books.Update(ctx, b); err != nil {

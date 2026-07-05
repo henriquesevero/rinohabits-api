@@ -133,12 +133,13 @@ func (h BookHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b, err := h.update.Execute(r.Context(), usecasebook.UpdateBookInput{
-		UserID:     userID,
-		BookID:     bookID,
-		Title:      req.Title,
-		Author:     req.Author,
-		TotalPages: req.TotalPages,
-		Status:     domainbook.Status(req.Status),
+		UserID:      userID,
+		BookID:      bookID,
+		Title:       req.Title,
+		Author:      req.Author,
+		TotalPages:  req.TotalPages,
+		Status:      domainbook.Status(req.Status),
+		CurrentPage: req.CurrentPage,
 	})
 	if err != nil {
 		switch {

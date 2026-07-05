@@ -18,10 +18,11 @@ type GoogleBookResult struct {
 }
 
 type UpdateBookRequest struct {
-	Title      *string `json:"title"`
-	Author     *string `json:"author"`
-	TotalPages *int    `json:"total_pages"`
-	Status     string  `json:"status"`
+	Title       *string `json:"title"`
+	Author      *string `json:"author"`
+	TotalPages  *int    `json:"total_pages"`
+	Status      string  `json:"status"`
+	CurrentPage *int    `json:"current_page"`
 }
 
 type RegisterReadingRequest struct {
