@@ -23,7 +23,7 @@ func (r BookRepository) Create(ctx context.Context, b *book.Book) error {
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO books (id, user_id, title, author, status, total_pages, current_page, cover_url, started_at, finished_at, sort_order)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-		   (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM books WHERE user_id = $2))`,
+		   (SELECT COALESCE(MIN(sort_order), 0) - 1 FROM books WHERE user_id = $2))`,
 		b.ID, b.UserID, b.Title, b.Author, string(b.Status), b.TotalPages, b.CurrentPage, b.CoverURL, b.StartedAt, b.FinishedAt,
 	)
 	return err
