@@ -119,6 +119,11 @@ func NewRouter(deps Dependencies) http.Handler {
 		stats.NewGetDailyBreakdownUseCase(users, habits, dailyLogs, systemClock),
 	)
 
+	gamificationHandler := handler.NewGamificationHandler(
+		stats.NewGetGamificationUseCase(users, habits, dailyLogs, readingLogs, systemClock),
+		stats.NewGetRankingUseCase(users, habits, dailyLogs, readingLogs, systemClock),
+	)
+
 	protected := middleware.Authenticate(deps.TokenManager)
 
 	mux.HandleFunc("GET /health", healthHandler(deps.Pool))
@@ -138,6 +143,8 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("GET /stats/trend", protected(http.HandlerFunc(statsHandler.Trend)))
 	mux.Handle("GET /stats/calendar", protected(http.HandlerFunc(statsHandler.Calendar)))
 	mux.Handle("GET /stats/daily", protected(http.HandlerFunc(statsHandler.DailyBreakdown)))
+	mux.Handle("GET /me/gamification", protected(http.HandlerFunc(gamificationHandler.MyStats)))
+	mux.Handle("GET /gamification/ranking", protected(http.HandlerFunc(gamificationHandler.Ranking)))
 	mux.Handle("POST /books", protected(http.HandlerFunc(bookHandler.Create)))
 	mux.Handle("GET /books", protected(http.HandlerFunc(bookHandler.List)))
 	mux.Handle("GET /books/google-search", protected(http.HandlerFunc(bookHandler.SearchGoogle)))

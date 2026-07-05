@@ -38,6 +38,15 @@ func (r ReadingLogRepository) SumPagesByUserAndDateRange(ctx context.Context, us
 	return total, err
 }
 
+func (r ReadingLogRepository) SumAllPagesByUser(ctx context.Context, userID uuid.UUID) (int, error) {
+	var total int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COALESCE(SUM(pages_read), 0) FROM reading_logs WHERE user_id = $1`,
+		userID,
+	).Scan(&total)
+	return total, err
+}
+
 func (r ReadingLogRepository) CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error) {
 	var count int
 	err := r.pool.QueryRow(ctx,

@@ -19,6 +19,7 @@ type UserRepository interface {
 	Create(ctx context.Context, u *user.User) error
 	FindByEmail(ctx context.Context, email string) (*user.User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+	ListAll(ctx context.Context) ([]*user.User, error)
 	UpdateTimezone(ctx context.Context, id uuid.UUID, timezone string) error
 	UpdateEmail(ctx context.Context, id uuid.UUID, email string) error
 	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
@@ -38,6 +39,7 @@ type DailyLogRepository interface {
 	Create(ctx context.Context, log *dailylog.DailyLog) error
 	Delete(ctx context.Context, habitID uuid.UUID, logDate time.Time) error
 	ListByUserAndDate(ctx context.Context, userID uuid.UUID, logDate time.Time) ([]*dailylog.DailyLog, error)
+	ListAllByUser(ctx context.Context, userID uuid.UUID) ([]*dailylog.DailyLog, error)
 }
 
 type BookRepository interface {
@@ -53,6 +55,7 @@ type BookRepository interface {
 type ReadingLogRepository interface {
 	Upsert(ctx context.Context, log *readinglog.ReadingLog) error
 	SumPagesByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (int, error)
+	SumAllPagesByUser(ctx context.Context, userID uuid.UUID) (int, error)
 	CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error)
 }
 

@@ -59,3 +59,28 @@ func (r DailyLogRepository) ListByUserAndDate(ctx context.Context, userID uuid.U
 
 	return logs, rows.Err()
 }
+
+func (r DailyLogRepository) ListAllByUser(ctx context.Context, userID uuid.UUID) ([]*dailylog.DailyLog, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, user_id, habit_id, log_date, completed_at
+		 FROM daily_logs
+		 WHERE user_id = $1
+		 ORDER BY log_date DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []*dailylog.DailyLog
+	for rows.Next() {
+		var l dailylog.DailyLog
+		if err := rows.Scan(&l.ID, &l.UserID, &l.HabitID, &l.LogDate, &l.CompletedAt); err != nil {
+			return nil, err
+		}
+		logs = append(logs, &l)
+	}
+
+	return logs, rows.Err()
+}

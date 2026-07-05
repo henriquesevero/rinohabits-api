@@ -76,6 +76,27 @@ func (r UserRepository) UpdateAvatarURL(ctx context.Context, id uuid.UUID, avata
 	return err
 }
 
+func (r UserRepository) ListAll(ctx context.Context) ([]*user.User, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, name, email, password_hash, timezone, avatar_url, created_at, updated_at
+		 FROM users ORDER BY created_at`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*user.User
+	for rows.Next() {
+		var u user.User
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Timezone, &u.AvatarURL, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, &u)
+	}
+	return users, rows.Err()
+}
+
 func (r UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
 	return err
