@@ -22,6 +22,7 @@ type CourseHandler struct {
 	update        usecasecourse.UpdateCourseUseCase
 	registerStudy usecasecourse.RegisterStudyUseCase
 	delete        usecasecourse.DeleteCourseUseCase
+	reorder       usecasecourse.ReorderCoursesUseCase
 	courses       port.CourseRepository
 	storage       port.FileStorage
 }
@@ -32,12 +33,13 @@ func NewCourseHandler(
 	update usecasecourse.UpdateCourseUseCase,
 	registerStudy usecasecourse.RegisterStudyUseCase,
 	delete usecasecourse.DeleteCourseUseCase,
+	reorder usecasecourse.ReorderCoursesUseCase,
 	courses port.CourseRepository,
 	storage port.FileStorage,
 ) CourseHandler {
 	return CourseHandler{
 		create: create, list: list, update: update,
-		registerStudy: registerStudy, delete: delete,
+		registerStudy: registerStudy, delete: delete, reorder: reorder,
 		courses: courses, storage: storage,
 	}
 }
@@ -259,6 +261,37 @@ func (h CourseHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"cover_url": coverURL})
+}
+
+func (h CourseHandler) Reorder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.ReorderCoursesRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.IDs))
+	for _, s := range req.IDs {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid course id: "+s)
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	if err := h.reorder.Execute(r.Context(), userID, ids); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reorder courses")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func toCourseResponse(c *domaincourse.Course) dto.CourseResponse {

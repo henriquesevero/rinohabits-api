@@ -9,6 +9,7 @@ import (
 type Status string
 
 const (
+	StatusShelf      Status = "na_prateleira"
 	StatusWantToTake Status = "quero_fazer"
 	StatusTaking     Status = "fazendo"
 	StatusDone       Status = "concluido"
@@ -16,7 +17,7 @@ const (
 
 func (s Status) IsValid() bool {
 	switch s {
-	case StatusWantToTake, StatusTaking, StatusDone:
+	case StatusShelf, StatusWantToTake, StatusTaking, StatusDone:
 		return true
 	default:
 		return false
@@ -32,6 +33,7 @@ type Course struct {
 	Status       Status
 	TotalHours   *float64
 	CurrentHours float64
+	SortOrder    int
 	CoverURL     *string
 	StartedAt    *time.Time
 	FinishedAt   *time.Time

@@ -77,6 +77,7 @@ type CourseRepository interface {
 	Update(ctx context.Context, c *course.Course) error
 	UpdateCover(ctx context.Context, id uuid.UUID, coverURL string) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	ReorderCourses(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 }
 
 type CourseLogRepository interface {

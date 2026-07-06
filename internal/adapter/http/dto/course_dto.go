@@ -20,6 +20,10 @@ type RegisterStudyRequest struct {
 	HoursLoggedNow float64 `json:"hours_logged_now"`
 }
 
+type ReorderCoursesRequest struct {
+	IDs []string `json:"ids"`
+}
+
 type CourseResponse struct {
 	ID           string   `json:"id"`
 	Title        string   `json:"title"`

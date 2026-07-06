@@ -106,6 +106,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasecourse.NewUpdateCourseUseCase(courses, systemClock),
 		usecasecourse.NewRegisterStudyUseCase(courses, courseLogs, users, systemClock),
 		usecasecourse.NewDeleteCourseUseCase(courses),
+		usecasecourse.NewReorderCoursesUseCase(courses),
 		courses,
 		fileStorage,
 	)
@@ -159,6 +160,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("PATCH /books/reorder", protected(http.HandlerFunc(bookHandler.Reorder)))
 	mux.Handle("POST /courses", protected(http.HandlerFunc(courseHandler.Create)))
 	mux.Handle("GET /courses", protected(http.HandlerFunc(courseHandler.List)))
+	mux.Handle("PATCH /courses/reorder", protected(http.HandlerFunc(courseHandler.Reorder)))
 	mux.Handle("PATCH /courses/{id}", protected(http.HandlerFunc(courseHandler.Update)))
 	mux.Handle("POST /courses/{id}/study", protected(http.HandlerFunc(courseHandler.RegisterStudy)))
 	mux.Handle("POST /courses/{id}/cover", protected(http.HandlerFunc(courseHandler.UploadCover)))
