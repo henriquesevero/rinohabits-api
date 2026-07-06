@@ -10,13 +10,14 @@ import (
 )
 
 type UpdateHabitInput struct {
-	UserID         uuid.UUID
-	HabitID        uuid.UUID
-	Name           string
-	Icon           string
-	Color          string
-	ActiveWeekdays []int
-	MonthlyTarget  *int
+	UserID          uuid.UUID
+	HabitID         uuid.UUID
+	Name            string
+	Icon            string
+	Color           string
+	ActiveWeekdays  []int
+	WeeklyFrequency *int
+	MonthlyTarget   *int
 }
 
 type UpdateHabitUseCase struct {
@@ -28,8 +29,8 @@ func NewUpdateHabitUseCase(habits port.HabitRepository) UpdateHabitUseCase {
 }
 
 func (uc UpdateHabitUseCase) Execute(ctx context.Context, in UpdateHabitInput) (*domainhabit.Habit, error) {
-	if len(in.ActiveWeekdays) == 0 {
-		return nil, domainhabit.ErrNoActiveWeekday
+	if in.WeeklyFrequency == nil && len(in.ActiveWeekdays) == 0 {
+		return nil, domainhabit.ErrNoSchedule
 	}
 
 	h, err := uc.habits.FindByID(ctx, in.HabitID)
@@ -43,7 +44,12 @@ func (uc UpdateHabitUseCase) Execute(ctx context.Context, in UpdateHabitInput) (
 	h.Name = in.Name
 	h.Icon = in.Icon
 	h.Color = in.Color
-	h.ActiveWeekdays = in.ActiveWeekdays
+	h.WeeklyFrequency = in.WeeklyFrequency
+	if in.WeeklyFrequency != nil {
+		h.ActiveWeekdays = []int{}
+	} else {
+		h.ActiveWeekdays = in.ActiveWeekdays
+	}
 	h.MonthlyTarget = in.MonthlyTarget
 
 	if err := uc.habits.Update(ctx, h); err != nil {

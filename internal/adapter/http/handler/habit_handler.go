@@ -54,15 +54,16 @@ func (h HabitHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	created, err := h.create.Execute(r.Context(), usecasehabit.CreateHabitInput{
-		UserID:         userID,
-		Name:           req.Name,
-		Icon:           req.Icon,
-		Color:          req.Color,
-		ActiveWeekdays: req.ActiveWeekdays,
-		MonthlyTarget:  req.MonthlyTarget,
+		UserID:          userID,
+		Name:            req.Name,
+		Icon:            req.Icon,
+		Color:           req.Color,
+		ActiveWeekdays:  req.ActiveWeekdays,
+		WeeklyFrequency: req.WeeklyFrequency,
+		MonthlyTarget:   req.MonthlyTarget,
 	})
 	if err != nil {
-		if errors.Is(err, domainhabit.ErrNoActiveWeekday) {
+		if errors.Is(err, domainhabit.ErrNoSchedule) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -115,8 +116,9 @@ func (h HabitHandler) Today(w http.ResponseWriter, r *http.Request) {
 	responses := make([]dto.TodayHabitResponse, 0, len(todayHabits))
 	for _, th := range todayHabits {
 		responses = append(responses, dto.TodayHabitResponse{
-			Habit:       toHabitResponse(th.Habit),
-			IsCompleted: th.IsCompleted,
+			Habit:           toHabitResponse(th.Habit),
+			IsCompleted:     th.IsCompleted,
+			WeekCompletions: th.WeekCompletions,
 		})
 	}
 
@@ -177,16 +179,17 @@ func (h HabitHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated, err := h.update.Execute(r.Context(), usecasehabit.UpdateHabitInput{
-		UserID:         userID,
-		HabitID:        habitID,
-		Name:           req.Name,
-		Icon:           req.Icon,
-		Color:          req.Color,
-		ActiveWeekdays: req.ActiveWeekdays,
-		MonthlyTarget:  req.MonthlyTarget,
+		UserID:          userID,
+		HabitID:         habitID,
+		Name:            req.Name,
+		Icon:            req.Icon,
+		Color:           req.Color,
+		ActiveWeekdays:  req.ActiveWeekdays,
+		WeeklyFrequency: req.WeeklyFrequency,
+		MonthlyTarget:   req.MonthlyTarget,
 	})
 	if err != nil {
-		if errors.Is(err, domainhabit.ErrNoActiveWeekday) {
+		if errors.Is(err, domainhabit.ErrNoSchedule) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -259,11 +262,12 @@ func (h HabitHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 
 func toHabitResponse(h *domainhabit.Habit) dto.HabitResponse {
 	return dto.HabitResponse{
-		ID:             h.ID.String(),
-		Name:           h.Name,
-		Icon:           h.Icon,
-		Color:          h.Color,
-		ActiveWeekdays: h.ActiveWeekdays,
-		MonthlyTarget:  h.MonthlyTarget,
+		ID:              h.ID.String(),
+		Name:            h.Name,
+		Icon:            h.Icon,
+		Color:           h.Color,
+		ActiveWeekdays:  h.ActiveWeekdays,
+		WeeklyFrequency: h.WeeklyFrequency,
+		MonthlyTarget:   h.MonthlyTarget,
 	}
 }

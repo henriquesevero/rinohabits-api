@@ -1,33 +1,37 @@
 package dto
 
 type CreateHabitRequest struct {
-	Name           string `json:"name"`
-	Icon           string `json:"icon"`
-	Color          string `json:"color"`
-	ActiveWeekdays []int  `json:"active_weekdays"`
-	MonthlyTarget  *int   `json:"monthly_target"`
+	Name            string `json:"name"`
+	Icon            string `json:"icon"`
+	Color           string `json:"color"`
+	ActiveWeekdays  []int  `json:"active_weekdays"`
+	WeeklyFrequency *int   `json:"weekly_frequency"`
+	MonthlyTarget   *int   `json:"monthly_target"`
 }
 
 type UpdateHabitRequest struct {
-	Name           string `json:"name"`
-	Icon           string `json:"icon"`
-	Color          string `json:"color"`
-	ActiveWeekdays []int  `json:"active_weekdays"`
-	MonthlyTarget  *int   `json:"monthly_target"`
+	Name            string `json:"name"`
+	Icon            string `json:"icon"`
+	Color           string `json:"color"`
+	ActiveWeekdays  []int  `json:"active_weekdays"`
+	WeeklyFrequency *int   `json:"weekly_frequency"`
+	MonthlyTarget   *int   `json:"monthly_target"`
 }
 
 type HabitResponse struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Icon           string `json:"icon"`
-	Color          string `json:"color"`
-	ActiveWeekdays []int  `json:"active_weekdays"`
-	MonthlyTarget  *int   `json:"monthly_target"`
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	Icon            string `json:"icon"`
+	Color           string `json:"color"`
+	ActiveWeekdays  []int  `json:"active_weekdays"`
+	WeeklyFrequency *int   `json:"weekly_frequency"`
+	MonthlyTarget   *int   `json:"monthly_target"`
 }
 
 type TodayHabitResponse struct {
-	Habit       HabitResponse `json:"habit"`
-	IsCompleted bool          `json:"is_completed"`
+	Habit           HabitResponse `json:"habit"`
+	IsCompleted     bool          `json:"is_completed"`
+	WeekCompletions int           `json:"week_completions"`
 }
 
 type TodayDashboardResponse struct {

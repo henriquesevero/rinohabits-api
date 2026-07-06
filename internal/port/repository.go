@@ -40,6 +40,7 @@ type DailyLogRepository interface {
 	Create(ctx context.Context, log *dailylog.DailyLog) error
 	Delete(ctx context.Context, habitID uuid.UUID, logDate time.Time) error
 	ListByUserAndDate(ctx context.Context, userID uuid.UUID, logDate time.Time) ([]*dailylog.DailyLog, error)
+	ListByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) ([]*dailylog.DailyLog, error)
 	ListAllByUser(ctx context.Context, userID uuid.UUID) ([]*dailylog.DailyLog, error)
 }
 
