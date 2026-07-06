@@ -32,6 +32,7 @@ type BookHandler struct {
 	readingStats    stats.GetReadingStatsUseCase
 	books           port.BookRepository
 	storage         port.FileStorage
+	googleBooksKey  string
 }
 
 func NewBookHandler(
@@ -43,12 +44,14 @@ func NewBookHandler(
 	readingStats stats.GetReadingStatsUseCase,
 	books port.BookRepository,
 	storage port.FileStorage,
+	googleBooksKey string,
 ) BookHandler {
 	return BookHandler{
 		create: create, list: list, update: update,
 		registerReading: registerReading, delete: delete,
 		readingStats: readingStats,
 		books: books, storage: storage,
+		googleBooksKey: googleBooksKey,
 	}
 }
 
@@ -338,8 +341,30 @@ func (h BookHandler) SearchBooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	searchType := r.URL.Query().Get("type") // "title" | "author" | "" (general)
+	searchType := r.URL.Query().Get("type")   // "title" | "author" | "" (general)
+	source := r.URL.Query().Get("source")      // "google" | "" → openlib
 
+	var (
+		results []dto.BookSearchResult
+		err     error
+	)
+
+	if source == "google" {
+		results, err = h.searchGoogleBooks(r, q, searchType)
+	} else {
+		results, err = searchOpenLibrary(r, q, searchType)
+	}
+
+	if err != nil {
+		log.Printf("books: search error (source=%s): %v", source, err)
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, results)
+}
+
+func searchOpenLibrary(r *http.Request, q, searchType string) ([]dto.BookSearchResult, error) {
 	params := neturl.Values{}
 	switch searchType {
 	case "author":
@@ -352,44 +377,35 @@ func (h BookHandler) SearchBooks(w http.ResponseWriter, r *http.Request) {
 	params.Set("limit", "15")
 	params.Set("fields", "key,title,author_name,number_of_pages_median,cover_i")
 
-	apiURL := "https://openlibrary.org/search.json?" + params.Encode()
-
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet,
+		"https://openlibrary.org/search.json?"+params.Encode(), nil)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to build request")
-		return
+		return nil, fmt.Errorf("failed to build Open Library request")
 	}
 	req.Header.Set("User-Agent", "rinohabits/1.0")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("books: open library search network error: %v", err)
-		writeError(w, http.StatusBadGateway, "failed to reach Open Library")
-		return
+		return nil, fmt.Errorf("failed to reach Open Library")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		log.Printf("books: open library search HTTP %d: %s", resp.StatusCode, body)
-		writeError(w, http.StatusBadGateway, "Open Library returned an error")
-		return
+		io.ReadAll(resp.Body) //nolint:errcheck
+		return nil, fmt.Errorf("Open Library returned HTTP %d", resp.StatusCode)
 	}
 
 	var olResp struct {
 		Docs []struct {
-			Key                  string   `json:"key"`
-			Title                string   `json:"title"`
-			AuthorName           []string `json:"author_name"`
-			NumberOfPagesMedian  *int     `json:"number_of_pages_median"`
-			CoverI               *int64   `json:"cover_i"`
+			Key                 string   `json:"key"`
+			Title               string   `json:"title"`
+			AuthorName          []string `json:"author_name"`
+			NumberOfPagesMedian *int     `json:"number_of_pages_median"`
+			CoverI              *int64   `json:"cover_i"`
 		} `json:"docs"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&olResp); err != nil {
-		log.Printf("books: open library search decode error: %v", err)
-		writeError(w, http.StatusBadGateway, "failed to parse Open Library response")
-		return
+		return nil, fmt.Errorf("failed to parse Open Library response")
 	}
 
 	results := make([]dto.BookSearchResult, 0, len(olResp.Docs))
@@ -397,7 +413,6 @@ func (h BookHandler) SearchBooks(w http.ResponseWriter, r *http.Request) {
 		if doc.Title == "" {
 			continue
 		}
-		author := strings.Join(doc.AuthorName, ", ")
 		pageCount := 0
 		if doc.NumberOfPagesMedian != nil {
 			pageCount = *doc.NumberOfPagesMedian
@@ -406,17 +421,85 @@ func (h BookHandler) SearchBooks(w http.ResponseWriter, r *http.Request) {
 		if doc.CoverI != nil {
 			coverURL = fmt.Sprintf("https://covers.openlibrary.org/b/id/%d-M.jpg", *doc.CoverI)
 		}
-		id := strings.TrimPrefix(doc.Key, "/works/")
 		results = append(results, dto.BookSearchResult{
-			ID:        id,
+			ID:        strings.TrimPrefix(doc.Key, "/works/"),
 			Title:     doc.Title,
-			Author:    author,
+			Author:    strings.Join(doc.AuthorName, ", "),
 			PageCount: pageCount,
 			CoverURL:  coverURL,
 		})
 	}
+	return results, nil
+}
 
-	writeJSON(w, http.StatusOK, results)
+func (h BookHandler) searchGoogleBooks(r *http.Request, q, searchType string) ([]dto.BookSearchResult, error) {
+	var gq string
+	switch searchType {
+	case "title":
+		gq = "intitle:" + q
+	case "author":
+		gq = "inauthor:" + q
+	default:
+		gq = q
+	}
+
+	params := neturl.Values{}
+	params.Set("q", gq)
+	params.Set("maxResults", "15")
+	params.Set("printType", "books")
+	if h.googleBooksKey != "" {
+		params.Set("key", h.googleBooksKey)
+	}
+
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet,
+		"https://www.googleapis.com/books/v1/volumes?"+params.Encode(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build Google Books request")
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reach Google Books")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		io.ReadAll(resp.Body) //nolint:errcheck
+		return nil, fmt.Errorf("Google Books returned HTTP %d", resp.StatusCode)
+	}
+
+	var gbResp struct {
+		Items []struct {
+			ID         string `json:"id"`
+			VolumeInfo struct {
+				Title      string   `json:"title"`
+				Authors    []string `json:"authors"`
+				PageCount  int      `json:"pageCount"`
+				ImageLinks struct {
+					Thumbnail string `json:"thumbnail"`
+				} `json:"imageLinks"`
+			} `json:"volumeInfo"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&gbResp); err != nil {
+		return nil, fmt.Errorf("failed to parse Google Books response")
+	}
+
+	results := make([]dto.BookSearchResult, 0, len(gbResp.Items))
+	for _, item := range gbResp.Items {
+		if item.VolumeInfo.Title == "" {
+			continue
+		}
+		coverURL := strings.ReplaceAll(item.VolumeInfo.ImageLinks.Thumbnail, "http://", "https://")
+		results = append(results, dto.BookSearchResult{
+			ID:        "gb_" + item.ID,
+			Title:     item.VolumeInfo.Title,
+			Author:    strings.Join(item.VolumeInfo.Authors, ", "),
+			PageCount: item.VolumeInfo.PageCount,
+			CoverURL:  coverURL,
+		})
+	}
+	return results, nil
 }
 
 func toBookResponse(b *domainbook.Book) dto.BookResponse {

@@ -94,6 +94,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		stats.NewGetReadingStatsUseCase(users, readingLogs, systemClock),
 		books,
 		fileStorage,
+		deps.GoogleBooksAPIKey,
 	)
 
 	courses := postgres.NewCourseRepository(deps.Pool)
