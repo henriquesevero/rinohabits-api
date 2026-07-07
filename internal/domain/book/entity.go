@@ -32,6 +32,7 @@ type Book struct {
 	Status      Status
 	TotalPages  *int
 	CurrentPage int
+	Collection  *string
 	CoverURL    *string
 	StartedAt   *time.Time
 	FinishedAt  *time.Time

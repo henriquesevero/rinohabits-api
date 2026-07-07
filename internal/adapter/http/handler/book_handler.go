@@ -74,6 +74,7 @@ func (h BookHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Author:     req.Author,
 		TotalPages: req.TotalPages,
 		Status:     domainbook.Status(req.Status),
+		Collection: req.Collection,
 		CoverURL:   req.CoverURL,
 	})
 	if err != nil {
@@ -141,6 +142,7 @@ func (h BookHandler) Update(w http.ResponseWriter, r *http.Request) {
 		TotalPages:  req.TotalPages,
 		Status:      domainbook.Status(req.Status),
 		CurrentPage: req.CurrentPage,
+		Collection:  req.Collection,
 	})
 	if err != nil {
 		switch {
@@ -526,6 +528,7 @@ func toBookResponse(b *domainbook.Book) dto.BookResponse {
 		TotalPages:  b.TotalPages,
 		CurrentPage: b.CurrentPage,
 		Percentage:  percentage,
+		Collection:  b.Collection,
 		CoverURL:    b.CoverURL,
 		StartedAt:   startedAt,
 		FinishedAt:  finishedAt,

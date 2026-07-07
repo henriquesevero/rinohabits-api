@@ -18,6 +18,7 @@ type UpdateBookInput struct {
 	TotalPages  *int
 	Status      domainbook.Status
 	CurrentPage *int
+	Collection  *string
 }
 
 type UpdateBookUseCase struct {
@@ -72,6 +73,14 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 
 	if in.CurrentPage != nil && *in.CurrentPage >= 0 {
 		b.CurrentPage = *in.CurrentPage
+	}
+
+	if in.Collection != nil {
+		if *in.Collection == "" {
+			b.Collection = nil
+		} else {
+			b.Collection = in.Collection
+		}
 	}
 
 	if err := uc.books.Update(ctx, b); err != nil {

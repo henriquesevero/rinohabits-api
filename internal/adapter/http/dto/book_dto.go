@@ -5,6 +5,7 @@ type CreateBookRequest struct {
 	Author     string  `json:"author"`
 	TotalPages *int    `json:"total_pages"`
 	Status     string  `json:"status"`
+	Collection *string `json:"collection"`
 	CoverURL   *string `json:"cover_url"`
 }
 
@@ -22,6 +23,7 @@ type UpdateBookRequest struct {
 	TotalPages  *int    `json:"total_pages"`
 	Status      string  `json:"status"`
 	CurrentPage *int    `json:"current_page"`
+	Collection  *string `json:"collection"`
 }
 
 type RegisterReadingRequest struct {
@@ -40,6 +42,7 @@ type BookResponse struct {
 	TotalPages  *int    `json:"total_pages"`
 	CurrentPage int     `json:"current_page"`
 	Percentage  float64 `json:"percentage"`
+	Collection  *string `json:"collection"`
 	CoverURL    *string `json:"cover_url"`
 	StartedAt   *string `json:"started_at"`
 	FinishedAt  *string `json:"finished_at"`

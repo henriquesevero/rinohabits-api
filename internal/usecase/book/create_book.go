@@ -15,6 +15,7 @@ type CreateBookInput struct {
 	Author     string
 	TotalPages *int
 	Status     domainbook.Status
+	Collection *string
 	CoverURL   *string
 }
 
@@ -39,6 +40,7 @@ func (uc CreateBookUseCase) Execute(ctx context.Context, in CreateBookInput) (*d
 	}
 
 	b := domainbook.New(in.UserID, in.Title, in.Author, in.TotalPages, status)
+	b.Collection = in.Collection
 	b.CoverURL = in.CoverURL
 	if err := uc.books.Create(ctx, b); err != nil {
 		return nil, err
