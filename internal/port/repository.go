@@ -39,6 +39,7 @@ type HabitRepository interface {
 type DailyLogRepository interface {
 	Create(ctx context.Context, log *dailylog.DailyLog) error
 	Delete(ctx context.Context, habitID uuid.UUID, logDate time.Time) error
+	DeleteAllByUser(ctx context.Context, userID uuid.UUID) error
 	ListByUserAndDate(ctx context.Context, userID uuid.UUID, logDate time.Time) ([]*dailylog.DailyLog, error)
 	ListByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) ([]*dailylog.DailyLog, error)
 	ListAllByUser(ctx context.Context, userID uuid.UUID) ([]*dailylog.DailyLog, error)
@@ -52,6 +53,7 @@ type BookRepository interface {
 	Update(ctx context.Context, b *book.Book) error
 	UpdateCover(ctx context.Context, id uuid.UUID, coverURL string) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteAllByUser(ctx context.Context, userID uuid.UUID) error
 	ReorderBooks(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 }
 
@@ -77,6 +79,7 @@ type CourseRepository interface {
 	Update(ctx context.Context, c *course.Course) error
 	UpdateCover(ctx context.Context, id uuid.UUID, coverURL string) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteAllByUser(ctx context.Context, userID uuid.UUID) error
 	ReorderCourses(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 }
 

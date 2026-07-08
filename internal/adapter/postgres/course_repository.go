@@ -81,6 +81,11 @@ func (r CourseRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+func (r CourseRepository) DeleteAllByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM courses WHERE user_id = $1`, userID)
+	return err
+}
+
 func (r CourseRepository) ReorderCourses(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
 	batch := &pgx.Batch{}
 	for i, id := range ids {

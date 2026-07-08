@@ -22,6 +22,9 @@ type AuthHandler struct {
 	changePassword auth.ChangePasswordUseCase
 	deleteAccount  auth.DeleteAccountUseCase
 	users          port.UserRepository
+	dailyLogs      port.DailyLogRepository
+	books          port.BookRepository
+	courses        port.CourseRepository
 	storage        port.FileStorage
 }
 
@@ -33,12 +36,15 @@ func NewAuthHandler(
 	changePassword auth.ChangePasswordUseCase,
 	deleteAccount auth.DeleteAccountUseCase,
 	users port.UserRepository,
+	dailyLogs port.DailyLogRepository,
+	books port.BookRepository,
+	courses port.CourseRepository,
 	storage port.FileStorage,
 ) AuthHandler {
 	return AuthHandler{
 		register: register, login: login, me: me,
 		changeEmail: changeEmail, changePassword: changePassword, deleteAccount: deleteAccount,
-		users: users, storage: storage,
+		users: users, dailyLogs: dailyLogs, books: books, courses: courses, storage: storage,
 	}
 }
 
@@ -264,5 +270,44 @@ func (h AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h AuthHandler) ResetHabits(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+	if err := h.dailyLogs.DeleteAllByUser(r.Context(), userID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reset habits")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h AuthHandler) ResetBooks(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+	if err := h.books.DeleteAllByUser(r.Context(), userID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reset books")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h AuthHandler) ResetCourses(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+	if err := h.courses.DeleteAllByUser(r.Context(), userID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to reset courses")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

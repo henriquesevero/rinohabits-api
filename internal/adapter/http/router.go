@@ -61,6 +61,9 @@ func NewRouter(deps Dependencies) http.Handler {
 	hasher := security.NewBcryptHasher()
 	systemClock := clock.NewSystemClock()
 
+	books := postgres.NewBookRepository(deps.Pool)
+	courses := postgres.NewCourseRepository(deps.Pool)
+
 	authHandler := handler.NewAuthHandler(
 		auth.NewRegisterUseCase(users, hasher),
 		auth.NewLoginUseCase(users, hasher, deps.TokenManager),
@@ -69,6 +72,9 @@ func NewRouter(deps Dependencies) http.Handler {
 		auth.NewChangePasswordUseCase(users, hasher),
 		auth.NewDeleteAccountUseCase(users, hasher),
 		users,
+		dailyLogs,
+		books,
+		courses,
 		fileStorage,
 	)
 
@@ -82,7 +88,6 @@ func NewRouter(deps Dependencies) http.Handler {
 		habits,
 	)
 
-	books := postgres.NewBookRepository(deps.Pool)
 	readingLogs := postgres.NewReadingLogRepository(deps.Pool)
 
 	bookHandler := handler.NewBookHandler(
@@ -97,7 +102,6 @@ func NewRouter(deps Dependencies) http.Handler {
 		deps.GoogleBooksAPIKey,
 	)
 
-	courses := postgres.NewCourseRepository(deps.Pool)
 	courseLogs := postgres.NewCourseLogRepository(deps.Pool)
 
 	courseHandler := handler.NewCourseHandler(
@@ -136,6 +140,9 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("PATCH /me/email", protected(http.HandlerFunc(authHandler.ChangeEmail)))
 	mux.Handle("PATCH /me/password", protected(http.HandlerFunc(authHandler.ChangePassword)))
 	mux.Handle("DELETE /me", protected(http.HandlerFunc(authHandler.DeleteAccount)))
+	mux.Handle("DELETE /me/habits", protected(http.HandlerFunc(authHandler.ResetHabits)))
+	mux.Handle("DELETE /me/books", protected(http.HandlerFunc(authHandler.ResetBooks)))
+	mux.Handle("DELETE /me/courses", protected(http.HandlerFunc(authHandler.ResetCourses)))
 	mux.Handle("POST /habits", protected(http.HandlerFunc(habitHandler.Create)))
 	mux.Handle("GET /habits", protected(http.HandlerFunc(habitHandler.ListAll)))
 	mux.Handle("GET /habits/today", protected(http.HandlerFunc(habitHandler.Today)))

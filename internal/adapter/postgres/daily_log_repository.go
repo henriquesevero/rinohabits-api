@@ -36,6 +36,11 @@ func (r DailyLogRepository) Delete(ctx context.Context, habitID uuid.UUID, logDa
 	return err
 }
 
+func (r DailyLogRepository) DeleteAllByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM daily_logs WHERE user_id = $1`, userID)
+	return err
+}
+
 func (r DailyLogRepository) ListByUserAndDate(ctx context.Context, userID uuid.UUID, logDate time.Time) ([]*dailylog.DailyLog, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, user_id, habit_id, log_date, completed_at
