@@ -72,7 +72,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		auth.NewChangePasswordUseCase(users, hasher),
 		auth.NewDeleteAccountUseCase(users, hasher),
 		users,
-		dailyLogs,
+		habits,
 		books,
 		courses,
 		fileStorage,

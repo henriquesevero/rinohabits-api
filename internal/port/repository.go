@@ -33,6 +33,7 @@ type HabitRepository interface {
 	ListActiveByUser(ctx context.Context, userID uuid.UUID) ([]*habit.Habit, error)
 	Update(ctx context.Context, h *habit.Habit) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteAllByUser(ctx context.Context, userID uuid.UUID) error
 	ReorderHabits(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
 }
 

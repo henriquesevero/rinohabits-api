@@ -22,7 +22,7 @@ type AuthHandler struct {
 	changePassword auth.ChangePasswordUseCase
 	deleteAccount  auth.DeleteAccountUseCase
 	users          port.UserRepository
-	dailyLogs      port.DailyLogRepository
+	habits         port.HabitRepository
 	books          port.BookRepository
 	courses        port.CourseRepository
 	storage        port.FileStorage
@@ -36,7 +36,7 @@ func NewAuthHandler(
 	changePassword auth.ChangePasswordUseCase,
 	deleteAccount auth.DeleteAccountUseCase,
 	users port.UserRepository,
-	dailyLogs port.DailyLogRepository,
+	habits port.HabitRepository,
 	books port.BookRepository,
 	courses port.CourseRepository,
 	storage port.FileStorage,
@@ -44,7 +44,7 @@ func NewAuthHandler(
 	return AuthHandler{
 		register: register, login: login, me: me,
 		changeEmail: changeEmail, changePassword: changePassword, deleteAccount: deleteAccount,
-		users: users, dailyLogs: dailyLogs, books: books, courses: courses, storage: storage,
+		users: users, habits: habits, books: books, courses: courses, storage: storage,
 	}
 }
 
@@ -279,7 +279,7 @@ func (h AuthHandler) ResetHabits(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "missing authenticated user")
 		return
 	}
-	if err := h.dailyLogs.DeleteAllByUser(r.Context(), userID); err != nil {
+	if err := h.habits.DeleteAllByUser(r.Context(), userID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to reset habits")
 		return
 	}
