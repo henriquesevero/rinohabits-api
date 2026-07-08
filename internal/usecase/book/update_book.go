@@ -63,7 +63,7 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 		if in.Status == domainbook.StatusRead && b.FinishedAt == nil {
 			b.FinishedAt = &now
 		}
-		if in.Status == domainbook.StatusWantToRead {
+		if in.Status == domainbook.StatusOnShelf || in.Status == domainbook.StatusWantToRead {
 			b.StartedAt = nil
 			b.FinishedAt = nil
 			b.CurrentPage = 0

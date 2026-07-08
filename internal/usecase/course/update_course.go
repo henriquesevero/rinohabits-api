@@ -62,7 +62,7 @@ func (uc UpdateCourseUseCase) Execute(ctx context.Context, in UpdateCourseInput)
 		if in.Status == domaincourse.StatusDone && c.FinishedAt == nil {
 			c.FinishedAt = &now
 		}
-		if in.Status == domaincourse.StatusWantToTake {
+		if in.Status == domaincourse.StatusShelf || in.Status == domaincourse.StatusWantToTake {
 			c.StartedAt = nil
 			c.FinishedAt = nil
 			c.CurrentHours = 0
