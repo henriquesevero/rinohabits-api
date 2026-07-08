@@ -64,6 +64,7 @@ func (h CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Link:        req.Link,
 		TotalHours:  req.TotalHours,
 		Status:      domaincourse.Status(req.Status),
+		Collection:  req.Collection,
 	})
 	if err != nil {
 		if errors.Is(err, domaincourse.ErrInvalidTitle) || errors.Is(err, domaincourse.ErrInvalidStatus) {
@@ -130,6 +131,7 @@ func (h CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Link:        req.Link,
 		TotalHours:  req.TotalHours,
 		Status:      domaincourse.Status(req.Status),
+		Collection:  req.Collection,
 	})
 	if err != nil {
 		switch {
@@ -319,6 +321,7 @@ func toCourseResponse(c *domaincourse.Course) dto.CourseResponse {
 		TotalHours:   c.TotalHours,
 		CurrentHours: c.CurrentHours,
 		Percentage:   percentage,
+		Collection:   c.Collection,
 		CoverURL:     c.CoverURL,
 		StartedAt:    startedAt,
 		FinishedAt:   finishedAt,

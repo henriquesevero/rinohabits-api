@@ -6,6 +6,7 @@ type CreateCourseRequest struct {
 	Link        string   `json:"link"`
 	TotalHours  *float64 `json:"total_hours"`
 	Status      string   `json:"status"`
+	Collection  *string  `json:"collection"`
 }
 
 type UpdateCourseRequest struct {
@@ -14,6 +15,7 @@ type UpdateCourseRequest struct {
 	Link        *string  `json:"link"`
 	TotalHours  *float64 `json:"total_hours"`
 	Status      string   `json:"status"`
+	Collection  *string  `json:"collection"`
 }
 
 type RegisterStudyRequest struct {
@@ -33,6 +35,7 @@ type CourseResponse struct {
 	TotalHours   *float64 `json:"total_hours"`
 	CurrentHours float64  `json:"current_hours"`
 	Percentage   float64  `json:"percentage"`
+	Collection   *string  `json:"collection"`
 	CoverURL     *string  `json:"cover_url"`
 	StartedAt    *string  `json:"started_at"`
 	FinishedAt   *string  `json:"finished_at"`

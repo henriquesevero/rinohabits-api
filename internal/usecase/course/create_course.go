@@ -16,6 +16,7 @@ type CreateCourseInput struct {
 	Link        string
 	TotalHours  *float64
 	Status      domaincourse.Status
+	Collection  *string
 }
 
 type CreateCourseUseCase struct {
@@ -39,6 +40,7 @@ func (uc CreateCourseUseCase) Execute(ctx context.Context, in CreateCourseInput)
 	}
 
 	c := domaincourse.New(in.UserID, in.Title, in.Description, in.Link, in.TotalHours, status)
+	c.Collection = in.Collection
 	if err := uc.courses.Create(ctx, c); err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ type UpdateCourseInput struct {
 	Link        *string
 	TotalHours  *float64
 	Status      domaincourse.Status
+	Collection  *string
 }
 
 type UpdateCourseUseCase struct {
@@ -68,6 +69,14 @@ func (uc UpdateCourseUseCase) Execute(ctx context.Context, in UpdateCourseInput)
 			c.CurrentHours = 0
 		}
 		c.Status = in.Status
+	}
+
+	if in.Collection != nil {
+		if *in.Collection == "" {
+			c.Collection = nil
+		} else {
+			c.Collection = in.Collection
+		}
 	}
 
 	if err := uc.courses.Update(ctx, c); err != nil {

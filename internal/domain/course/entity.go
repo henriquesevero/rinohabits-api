@@ -34,6 +34,7 @@ type Course struct {
 	TotalHours   *float64
 	CurrentHours float64
 	SortOrder    int
+	Collection   *string
 	CoverURL     *string
 	StartedAt    *time.Time
 	FinishedAt   *time.Time
