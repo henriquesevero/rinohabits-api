@@ -111,6 +111,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasecourse.NewRegisterStudyUseCase(courses, courseLogs, users, systemClock),
 		usecasecourse.NewDeleteCourseUseCase(courses),
 		usecasecourse.NewReorderCoursesUseCase(courses),
+		stats.NewGetStudyStatsUseCase(users, courseLogs, systemClock),
 		courses,
 		fileStorage,
 	)
@@ -139,6 +140,8 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("POST /me/avatar", protected(http.HandlerFunc(authHandler.UploadAvatar)))
 	mux.Handle("PATCH /me/email", protected(http.HandlerFunc(authHandler.ChangeEmail)))
 	mux.Handle("PATCH /me/password", protected(http.HandlerFunc(authHandler.ChangePassword)))
+	mux.Handle("PATCH /me/book-collection-order", protected(http.HandlerFunc(authHandler.UpdateBookCollectionOrder)))
+	mux.Handle("PATCH /me/course-collection-order", protected(http.HandlerFunc(authHandler.UpdateCourseCollectionOrder)))
 	mux.Handle("DELETE /me", protected(http.HandlerFunc(authHandler.DeleteAccount)))
 	mux.Handle("DELETE /me/habits", protected(http.HandlerFunc(authHandler.ResetHabits)))
 	mux.Handle("DELETE /me/books", protected(http.HandlerFunc(authHandler.ResetBooks)))
@@ -168,6 +171,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("POST /courses", protected(http.HandlerFunc(courseHandler.Create)))
 	mux.Handle("GET /courses", protected(http.HandlerFunc(courseHandler.List)))
 	mux.Handle("PATCH /courses/reorder", protected(http.HandlerFunc(courseHandler.Reorder)))
+	mux.Handle("GET /courses/study-stats", protected(http.HandlerFunc(courseHandler.StudyStats)))
 	mux.Handle("PATCH /courses/{id}", protected(http.HandlerFunc(courseHandler.Update)))
 	mux.Handle("POST /courses/{id}/study", protected(http.HandlerFunc(courseHandler.RegisterStudy)))
 	mux.Handle("POST /courses/{id}/cover", protected(http.HandlerFunc(courseHandler.UploadCover)))

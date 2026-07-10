@@ -24,6 +24,8 @@ type UserRepository interface {
 	UpdateEmail(ctx context.Context, id uuid.UUID, email string) error
 	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	UpdateAvatarURL(ctx context.Context, id uuid.UUID, avatarURL string) error
+	UpdateBookCollectionOrder(ctx context.Context, id uuid.UUID, order []string) error
+	UpdateCourseCollectionOrder(ctx context.Context, id uuid.UUID, order []string) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -86,4 +88,6 @@ type CourseRepository interface {
 
 type CourseLogRepository interface {
 	Upsert(ctx context.Context, log *courselog.CourseLog) error
+	SumHoursByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (float64, error)
+	CountCoursesFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error)
 }

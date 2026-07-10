@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	domaincourse "github.com/henriquesevero/rinohabits-api/internal/domain/course"
 	"github.com/henriquesevero/rinohabits-api/internal/port"
 	usecasecourse "github.com/henriquesevero/rinohabits-api/internal/usecase/course"
+	"github.com/henriquesevero/rinohabits-api/internal/usecase/stats"
 )
 
 type CourseHandler struct {
@@ -23,6 +25,7 @@ type CourseHandler struct {
 	registerStudy usecasecourse.RegisterStudyUseCase
 	delete        usecasecourse.DeleteCourseUseCase
 	reorder       usecasecourse.ReorderCoursesUseCase
+	studyStats    stats.GetStudyStatsUseCase
 	courses       port.CourseRepository
 	storage       port.FileStorage
 }
@@ -34,13 +37,15 @@ func NewCourseHandler(
 	registerStudy usecasecourse.RegisterStudyUseCase,
 	delete usecasecourse.DeleteCourseUseCase,
 	reorder usecasecourse.ReorderCoursesUseCase,
+	studyStats stats.GetStudyStatsUseCase,
 	courses port.CourseRepository,
 	storage port.FileStorage,
 ) CourseHandler {
 	return CourseHandler{
 		create: create, list: list, update: update,
 		registerStudy: registerStudy, delete: delete, reorder: reorder,
-		courses: courses, storage: storage,
+		studyStats: studyStats,
+		courses:    courses, storage: storage,
 	}
 }
 
@@ -210,6 +215,35 @@ func (h CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h CourseHandler) StudyStats(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	periodType := stats.PeriodType(r.URL.Query().Get("period"))
+	if periodType == "" {
+		periodType = stats.PeriodMonth
+	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	ss, err := h.studyStats.Execute(r.Context(), userID, periodType, offset)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load study stats")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.StudyStatsResponse{
+		PeriodType:      string(ss.PeriodType),
+		Offset:          ss.Offset,
+		StartDate:       ss.Start,
+		EndDate:         ss.End,
+		HoursStudied:    ss.HoursStudied,
+		CoursesFinished: ss.CoursesFinished,
+	})
 }
 
 func (h CourseHandler) UploadCover(w http.ResponseWriter, r *http.Request) {

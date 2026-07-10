@@ -123,7 +123,14 @@ func (h AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, dto.UserResponse{ID: u.ID.String(), Name: u.Name, Email: u.Email, AvatarURL: u.AvatarURL})
+	writeJSON(w, http.StatusOK, dto.UserResponse{
+		ID:                    u.ID.String(),
+		Name:                  u.Name,
+		Email:                 u.Email,
+		AvatarURL:             u.AvatarURL,
+		BookCollectionOrder:   u.BookCollectionOrder,
+		CourseCollectionOrder: u.CourseCollectionOrder,
+	})
 }
 
 func (h AuthHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
@@ -165,6 +172,48 @@ func (h AuthHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"avatar_url": avatarURL})
+}
+
+func (h AuthHandler) UpdateBookCollectionOrder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.UpdateCollectionOrderRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.users.UpdateBookCollectionOrder(r.Context(), userID, req.Order); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update book collection order")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h AuthHandler) UpdateCourseCollectionOrder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	var req dto.UpdateCollectionOrderRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.users.UpdateCourseCollectionOrder(r.Context(), userID, req.Order); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update course collection order")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h AuthHandler) ChangeEmail(w http.ResponseWriter, r *http.Request) {

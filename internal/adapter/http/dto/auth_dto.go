@@ -18,10 +18,16 @@ type AuthResponse struct {
 }
 
 type UserResponse struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name"`
-	Email     string  `json:"email"`
-	AvatarURL *string `json:"avatar_url"`
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	Email                 string   `json:"email"`
+	AvatarURL             *string  `json:"avatar_url"`
+	BookCollectionOrder   []string `json:"book_collection_order"`
+	CourseCollectionOrder []string `json:"course_collection_order"`
+}
+
+type UpdateCollectionOrderRequest struct {
+	Order []string `json:"order"`
 }
 
 type ChangeEmailRequest struct {

@@ -26,6 +26,15 @@ type ReorderCoursesRequest struct {
 	IDs []string `json:"ids"`
 }
 
+type StudyStatsResponse struct {
+	PeriodType      string  `json:"period_type"`
+	Offset          int     `json:"offset"`
+	StartDate       string  `json:"start_date"`
+	EndDate         string  `json:"end_date"`
+	HoursStudied    float64 `json:"hours_studied"`
+	CoursesFinished int     `json:"courses_finished"`
+}
+
 type CourseResponse struct {
 	ID           string   `json:"id"`
 	Title        string   `json:"title"`
