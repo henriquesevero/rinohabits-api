@@ -39,7 +39,7 @@ func (m JWTTokenManager) Generate(userID uuid.UUID) (string, error) {
 func (m JWTTokenManager) Verify(tokenString string) (uuid.UUID, error) {
 	parsed, err := jwt.ParseWithClaims(tokenString, &claims{}, func(*jwt.Token) (any, error) {
 		return m.secret, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
 	if err != nil || !parsed.Valid {
 		return uuid.Nil, ErrInvalidToken
 	}

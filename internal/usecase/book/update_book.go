@@ -2,7 +2,6 @@ package book
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -39,53 +38,23 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 		return nil, domainbook.ErrNotFound
 	}
 
-	if in.Title != nil && *in.Title != "" {
-		b.Title = *in.Title
-	}
-	if in.Author != nil {
-		b.Author = *in.Author
-	}
-	if in.TotalPages != nil {
-		b.TotalPages = in.TotalPages
-	}
+	now := uc.clock.Now()
+
+	b.UpdateDetails(in.Title, in.Author, in.TotalPages, in.Collection)
 
 	if in.Status != "" && in.Status != b.Status {
-		if !in.Status.IsValid() {
-			return nil, domainbook.ErrInvalidStatus
+		if err := b.ChangeStatus(in.Status, now); err != nil {
+			return nil, err
 		}
-		now := uc.clock.Now()
-		if in.Status == domainbook.StatusReading && b.StartedAt == nil {
-			b.StartedAt = &now
-		}
-		if in.Status == domainbook.StatusReading {
-			b.FinishedAt = nil
-		}
-		if in.Status == domainbook.StatusRead && b.FinishedAt == nil {
-			b.FinishedAt = &now
-		}
-		if in.Status == domainbook.StatusOnShelf || in.Status == domainbook.StatusWantToRead {
-			b.StartedAt = nil
-			b.FinishedAt = nil
-			b.CurrentPage = 0
-		}
-		b.Status = in.Status
 	}
 
-	if in.CurrentPage != nil && *in.CurrentPage >= 0 {
-		b.CurrentPage = *in.CurrentPage
-	}
-
-	if in.Collection != nil {
-		if *in.Collection == "" {
-			b.Collection = nil
-		} else {
-			b.Collection = in.Collection
-		}
+	if in.CurrentPage != nil {
+		b.SetCurrentPage(*in.CurrentPage)
 	}
 
 	if err := uc.books.Update(ctx, b); err != nil {
 		return nil, err
 	}
-	b.UpdatedAt = time.Now()
+	b.UpdatedAt = now
 	return b, nil
 }

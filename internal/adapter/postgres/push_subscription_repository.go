@@ -44,7 +44,6 @@ func (r PushSubscriptionRepository) ReminderTargets(ctx context.Context) ([]*not
 		 JOIN users u ON u.id = ps.user_id
 		 JOIN habits h ON h.user_id = ps.user_id
 		   AND h.is_active
-		   AND h.deleted_at IS NULL
 		   AND EXTRACT(ISODOW FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::int = ANY(h.active_weekdays)
 		 WHERE NOT EXISTS (
 		     SELECT 1 FROM daily_logs dl

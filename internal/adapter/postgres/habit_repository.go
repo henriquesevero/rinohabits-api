@@ -27,7 +27,7 @@ func (r HabitRepository) Create(ctx context.Context, h *habit.Habit) error {
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO habits (id, user_id, name, icon, color, active_weekdays, weekly_frequency, monthly_target, sort_order)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
-		   (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM habits WHERE user_id = $2 AND deleted_at IS NULL))`,
+		   (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM habits WHERE user_id = $2))`,
 		h.ID, h.UserID, h.Name, h.Icon, h.Color, toInt16Slice(h.ActiveWeekdays), h.WeeklyFrequency, h.MonthlyTarget,
 	)
 	return err
@@ -37,7 +37,7 @@ func (r HabitRepository) FindByID(ctx context.Context, id uuid.UUID) (*habit.Hab
 	row := r.pool.QueryRow(ctx,
 		`SELECT id, user_id, name, COALESCE(icon, ''), COALESCE(color, ''), active_weekdays, weekly_frequency, monthly_target, is_active, created_at, updated_at
 		 FROM habits
-		 WHERE id = $1 AND deleted_at IS NULL`,
+		 WHERE id = $1`,
 		id,
 	)
 
@@ -56,7 +56,7 @@ func (r HabitRepository) ListActiveByUser(ctx context.Context, userID uuid.UUID)
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, user_id, name, COALESCE(icon, ''), COALESCE(color, ''), active_weekdays, weekly_frequency, monthly_target, is_active, created_at, updated_at
 		 FROM habits
-		 WHERE user_id = $1 AND is_active AND deleted_at IS NULL
+		 WHERE user_id = $1 AND is_active
 		 ORDER BY sort_order ASC, created_at ASC`,
 		userID,
 	)
@@ -87,7 +87,7 @@ func (r HabitRepository) Update(ctx context.Context, h *habit.Habit) error {
 }
 
 func (r HabitRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := r.pool.Exec(ctx, `UPDATE habits SET deleted_at = now() WHERE id = $1`, id)
+	_, err := r.pool.Exec(ctx, `DELETE FROM habits WHERE id = $1`, id)
 	return err
 }
 
@@ -99,7 +99,7 @@ func (r HabitRepository) DeleteAllByUser(ctx context.Context, userID uuid.UUID) 
 func (r HabitRepository) ReorderHabits(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
 	batch := &pgx.Batch{}
 	for i, id := range ids {
-		batch.Queue(`UPDATE habits SET sort_order = $1 WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL`, i, id, userID)
+		batch.Queue(`UPDATE habits SET sort_order = $1 WHERE id = $2 AND user_id = $3`, i, id, userID)
 	}
 	return r.pool.SendBatch(ctx, batch).Close()
 }

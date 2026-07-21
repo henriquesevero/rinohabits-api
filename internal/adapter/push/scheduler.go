@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
@@ -15,7 +16,8 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/domain/notification"
 )
 
-// sendHours are the BRT hours at which reminders are sent.
+const notificationTitle = "RinoHabits"
+
 var sendHours = map[int]string{
 	9:  "morning",
 	15: "afternoon",
@@ -77,24 +79,26 @@ func (s *Scheduler) sendReminders(ctx context.Context, slot string) {
 		return
 	}
 	log.Printf("push scheduler: sending slot=%s to %d subscriber(s)", slot, len(targets))
+	sent := 0
 	for _, t := range targets {
-		title, body := buildMessage(slot, firstName(t.UserName), t.Incomplete)
-		if err := Send(t, title, body, s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
+		body := buildMessage(slot, firstName(t.UserName), t.Incomplete)
+		if err := Send(t, notificationTitle, body, s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
 			log.Printf("push scheduler: send error: %v", err)
-		} else {
-			log.Printf("push scheduler: sent OK to %s", firstName(t.UserName))
+			continue
 		}
+		sent++
 	}
+	log.Printf("push scheduler: sent %d/%d for slot=%s", sent, len(targets), slot)
 }
 
-func buildMessage(slot, name string, incomplete int) (title, body string) {
+func buildMessage(slot, name string, incomplete int) string {
 	switch slot {
 	case "morning":
-		return "RinoHabits", name + ", bom dia! Não esqueça dos seus hábitos hoje 💪"
+		return name + ", bom dia! Não esqueça dos seus hábitos hoje 💪"
 	case "afternoon":
-		return "RinoHabits", name + ", " + formatCount(incomplete) + " para completar hoje!"
+		return name + ", " + formatCount(incomplete) + " para completar hoje!"
 	default: // evening
-		return "RinoHabits", name + ", último aviso! " + formatCount(incomplete) + " — não perca sua sequência 🔥"
+		return name + ", último aviso! " + formatCount(incomplete) + " — não perca sua sequência 🔥"
 	}
 }
 
@@ -102,10 +106,9 @@ func formatCount(n int) string {
 	if n == 1 {
 		return "ainda falta 1 hábito"
 	}
-	return "ainda faltam " + itoa(n) + " hábitos"
+	return "ainda faltam " + strconv.Itoa(n) + " hábitos"
 }
 
-// Send delivers a single push notification to one target.
 func Send(t *notification.ReminderTarget, title, body, pubKey, privKey, email string) error {
 	payload, _ := json.Marshal(map[string]string{"title": title, "body": body})
 	resp, err := webpush.SendNotification(payload, &webpush.Subscription{
@@ -120,7 +123,7 @@ func Send(t *notification.ReminderTarget, title, body, pubKey, privKey, email st
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("push rejected: HTTP %d — %s", resp.StatusCode, string(respBody))
@@ -135,18 +138,4 @@ func firstName(name string) string {
 		}
 	}
 	return name
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	buf := [20]byte{}
-	pos := len(buf)
-	for n > 0 {
-		pos--
-		buf[pos] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(buf[pos:])
 }

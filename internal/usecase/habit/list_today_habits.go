@@ -55,21 +55,9 @@ func (uc ListTodayHabitsUseCase) Execute(ctx context.Context, userID uuid.UUID) 
 
 	weekday := today.Weekday()
 
-	// Only query week logs if there are frequency-based habits
-	weekCount := make(map[uuid.UUID]int)
-	for _, h := range allHabits {
-		if h.IsFrequencyBased() {
-			weekStart := isoWeekStart(today)
-			weekEnd := weekStart.AddDate(0, 0, 7)
-			weekLogs, err := uc.logs.ListByUserAndDateRange(ctx, userID, weekStart, weekEnd)
-			if err != nil {
-				return nil, time.Time{}, err
-			}
-			for _, l := range weekLogs {
-				weekCount[l.HabitID]++
-			}
-			break
-		}
+	weekCount, err := uc.weekCompletionCounts(ctx, userID, today, allHabits)
+	if err != nil {
+		return nil, time.Time{}, err
 	}
 
 	result := make([]TodayHabit, 0, len(allHabits))
@@ -77,7 +65,7 @@ func (uc ListTodayHabitsUseCase) Execute(ctx context.Context, userID uuid.UUID) 
 		if h.IsFrequencyBased() {
 			wc := weekCount[h.ID]
 			if wc >= *h.WeeklyFrequency {
-				continue // quota met — hide until next week
+				continue
 			}
 			result = append(result, TodayHabit{
 				Habit:           h,
@@ -98,8 +86,35 @@ func (uc ListTodayHabitsUseCase) Execute(ctx context.Context, userID uuid.UUID) 
 	return result, today, nil
 }
 
-// isoWeekStart returns midnight UTC of the Monday that starts the ISO week containing t.
-// t is expected to be midnight UTC of a local date (as returned by LocalToday).
+func (uc ListTodayHabitsUseCase) weekCompletionCounts(ctx context.Context, userID uuid.UUID, today time.Time, allHabits []*domainhabit.Habit) (map[uuid.UUID]int, error) {
+	weekCount := make(map[uuid.UUID]int)
+
+	hasFrequencyBasedHabit := false
+	for _, h := range allHabits {
+		if h.IsFrequencyBased() {
+			hasFrequencyBasedHabit = true
+			break
+		}
+	}
+	if !hasFrequencyBasedHabit {
+		return weekCount, nil
+	}
+
+	weekStart := isoWeekStart(today)
+	weekEnd := weekStart.AddDate(0, 0, 7)
+	weekLogs, err := uc.logs.ListByUserAndDateRange(ctx, userID, weekStart, weekEnd)
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range weekLogs {
+		weekCount[l.HabitID]++
+	}
+
+	return weekCount, nil
+}
+
+// isoWeekStart returns midnight UTC of the Monday for the ISO week containing t.
+// t must already be midnight UTC of a local date, as returned by LocalToday.
 func isoWeekStart(t time.Time) time.Time {
 	weekday := t.Weekday()
 	daysToMonday := int(weekday) - 1

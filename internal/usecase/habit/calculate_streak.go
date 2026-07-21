@@ -93,10 +93,6 @@ func earliestHabitDate(habits []*domainhabit.Habit, fallback time.Time, timezone
 	return earliest, nil
 }
 
-// RequiredHabitsOn returns habits that exist as of `day` (created on or
-// before it) and are scheduled for that weekday. The creation day itself is
-// included here; use EffectiveRequiredHabits to apply the "setup day" rule
-// before treating a day as missed.
 func RequiredHabitsOn(habits []*domainhabit.Habit, day time.Time, timezone string) []*domainhabit.Habit {
 	required := make([]*domainhabit.Habit, 0, len(habits))
 
@@ -113,22 +109,26 @@ func RequiredHabitsOn(habits []*domainhabit.Habit, day time.Time, timezone strin
 	return required
 }
 
-// EffectiveRequiredHabits drops habits whose creation day is `day` and that
-// were not completed that day: a habit created late at night must not show
-// as a failed day for the few remaining minutes it existed. If the user does
-// complete it right away on the creation day, it still counts as a success.
+// A habit created today but not yet completed must not count as a missed
+// requirement — it may have been created minutes ago. Completing it today
+// still counts as a success.
 func EffectiveRequiredHabits(required []*domainhabit.Habit, day time.Time, timezone string, completedIDs map[uuid.UUID]bool) []*domainhabit.Habit {
 	effective := make([]*domainhabit.Habit, 0, len(required))
 
 	for _, h := range required {
-		createdDate, err := LocalToday(h.CreatedAt, timezone)
-		if err == nil && createdDate.Equal(day) && !completedIDs[h.ID] {
+		createdToday := isCreatedOn(h, day, timezone)
+		if createdToday && !completedIDs[h.ID] {
 			continue
 		}
 		effective = append(effective, h)
 	}
 
 	return effective
+}
+
+func isCreatedOn(h *domainhabit.Habit, day time.Time, timezone string) bool {
+	createdDate, err := LocalToday(h.CreatedAt, timezone)
+	return err == nil && createdDate.Equal(day)
 }
 
 func CountCompleted(required []*domainhabit.Habit, logs []*dailylog.DailyLog) int {

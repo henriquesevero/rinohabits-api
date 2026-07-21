@@ -12,6 +12,9 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/domain/user"
 	"github.com/henriquesevero/rinohabits-api/internal/port"
 	"github.com/henriquesevero/rinohabits-api/internal/usecase/auth"
+	usecasebook "github.com/henriquesevero/rinohabits-api/internal/usecase/book"
+	usecasecourse "github.com/henriquesevero/rinohabits-api/internal/usecase/course"
+	usecasehabit "github.com/henriquesevero/rinohabits-api/internal/usecase/habit"
 )
 
 type AuthHandler struct {
@@ -21,10 +24,10 @@ type AuthHandler struct {
 	changeEmail    auth.ChangeEmailUseCase
 	changePassword auth.ChangePasswordUseCase
 	deleteAccount  auth.DeleteAccountUseCase
+	resetHabits    usecasehabit.ResetHabitsUseCase
+	resetBooks     usecasebook.ResetBooksUseCase
+	resetCourses   usecasecourse.ResetCoursesUseCase
 	users          port.UserRepository
-	habits         port.HabitRepository
-	books          port.BookRepository
-	courses        port.CourseRepository
 	storage        port.FileStorage
 }
 
@@ -35,16 +38,17 @@ func NewAuthHandler(
 	changeEmail auth.ChangeEmailUseCase,
 	changePassword auth.ChangePasswordUseCase,
 	deleteAccount auth.DeleteAccountUseCase,
+	resetHabits usecasehabit.ResetHabitsUseCase,
+	resetBooks usecasebook.ResetBooksUseCase,
+	resetCourses usecasecourse.ResetCoursesUseCase,
 	users port.UserRepository,
-	habits port.HabitRepository,
-	books port.BookRepository,
-	courses port.CourseRepository,
 	storage port.FileStorage,
 ) AuthHandler {
 	return AuthHandler{
 		register: register, login: login, me: me,
 		changeEmail: changeEmail, changePassword: changePassword, deleteAccount: deleteAccount,
-		users: users, habits: habits, books: books, courses: courses, storage: storage,
+		resetHabits: resetHabits, resetBooks: resetBooks, resetCourses: resetCourses,
+		users: users, storage: storage,
 	}
 }
 
@@ -150,12 +154,16 @@ func (h AuthHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing avatar file")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	contentType, ok := allowedImageTypes[ext]
 	if !ok {
 		writeError(w, http.StatusBadRequest, "only jpg, png and webp are allowed")
+		return
+	}
+	if err := validateImageContent(file, contentType); err != nil {
+		writeError(w, http.StatusBadRequest, "file content does not match its extension")
 		return
 	}
 
@@ -328,7 +336,7 @@ func (h AuthHandler) ResetHabits(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "missing authenticated user")
 		return
 	}
-	if err := h.habits.DeleteAllByUser(r.Context(), userID); err != nil {
+	if err := h.resetHabits.Execute(r.Context(), userID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to reset habits")
 		return
 	}
@@ -341,7 +349,7 @@ func (h AuthHandler) ResetBooks(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "missing authenticated user")
 		return
 	}
-	if err := h.books.DeleteAllByUser(r.Context(), userID); err != nil {
+	if err := h.resetBooks.Execute(r.Context(), userID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to reset books")
 		return
 	}
@@ -354,7 +362,7 @@ func (h AuthHandler) ResetCourses(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "missing authenticated user")
 		return
 	}
-	if err := h.courses.DeleteAllByUser(r.Context(), userID); err != nil {
+	if err := h.resetCourses.Execute(r.Context(), userID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to reset courses")
 		return
 	}

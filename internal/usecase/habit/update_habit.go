@@ -44,13 +44,10 @@ func (uc UpdateHabitUseCase) Execute(ctx context.Context, in UpdateHabitInput) (
 	h.Name = in.Name
 	h.Icon = in.Icon
 	h.Color = in.Color
-	h.WeeklyFrequency = in.WeeklyFrequency
-	if in.WeeklyFrequency != nil {
-		h.ActiveWeekdays = []int{}
-	} else {
-		h.ActiveWeekdays = in.ActiveWeekdays
-	}
 	h.MonthlyTarget = in.MonthlyTarget
+	if err := h.SetSchedule(in.ActiveWeekdays, in.WeeklyFrequency); err != nil {
+		return nil, err
+	}
 
 	if err := uc.habits.Update(ctx, h); err != nil {
 		return nil, err

@@ -10,11 +10,11 @@ import (
 )
 
 type GetGamificationUseCase struct {
-	users    port.UserRepository
-	habits   port.HabitRepository
-	logs     port.DailyLogRepository
-	reading  port.ReadingLogRepository
-	clock    port.Clock
+	users   port.UserRepository
+	habits  port.HabitRepository
+	logs    port.DailyLogRepository
+	reading port.ReadingLogRepository
+	clock   port.Clock
 }
 
 func NewGetGamificationUseCase(

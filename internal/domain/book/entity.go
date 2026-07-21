@@ -51,3 +51,75 @@ func New(userID uuid.UUID, title, author string, totalPages *int, status Status)
 		CurrentPage: 0,
 	}
 }
+
+func (b *Book) RegisterReading(pagesRead int, now time.Time) error {
+	if pagesRead <= 0 {
+		return ErrNoProgress
+	}
+
+	newPage := b.CurrentPage + pagesRead
+	if b.TotalPages != nil && newPage > *b.TotalPages {
+		newPage = *b.TotalPages
+	}
+	b.CurrentPage = newPage
+
+	if b.Status == StatusWantToRead {
+		b.Status = StatusReading
+		b.StartedAt = &now
+	}
+	if b.TotalPages != nil && b.CurrentPage >= *b.TotalPages {
+		b.Status = StatusRead
+		b.FinishedAt = &now
+	}
+
+	return nil
+}
+
+func (b *Book) ChangeStatus(newStatus Status, now time.Time) error {
+	if !newStatus.IsValid() {
+		return ErrInvalidStatus
+	}
+
+	if newStatus == StatusReading && b.StartedAt == nil {
+		b.StartedAt = &now
+	}
+	if newStatus == StatusReading {
+		b.FinishedAt = nil
+	}
+	if newStatus == StatusRead && b.FinishedAt == nil {
+		b.FinishedAt = &now
+	}
+	if newStatus == StatusOnShelf || newStatus == StatusWantToRead {
+		b.StartedAt = nil
+		b.FinishedAt = nil
+		b.CurrentPage = 0
+	}
+
+	b.Status = newStatus
+	return nil
+}
+
+func (b *Book) UpdateDetails(title, author *string, totalPages *int, collection *string) {
+	if title != nil && *title != "" {
+		b.Title = *title
+	}
+	if author != nil {
+		b.Author = *author
+	}
+	if totalPages != nil {
+		b.TotalPages = totalPages
+	}
+	if collection != nil {
+		if *collection == "" {
+			b.Collection = nil
+		} else {
+			b.Collection = collection
+		}
+	}
+}
+
+func (b *Book) SetCurrentPage(page int) {
+	if page >= 0 {
+		b.CurrentPage = page
+	}
+}

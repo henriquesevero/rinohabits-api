@@ -275,12 +275,16 @@ func (h CourseHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing cover file")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	contentType, ok := allowedImageTypes[ext]
 	if !ok {
 		writeError(w, http.StatusBadRequest, "only jpg, png and webp are allowed")
+		return
+	}
+	if err := validateImageContent(file, contentType); err != nil {
+		writeError(w, http.StatusBadRequest, "file content does not match its extension")
 		return
 	}
 

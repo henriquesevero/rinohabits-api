@@ -68,3 +68,12 @@ func percentageOf(completed, required int) float64 {
 	}
 	return float64(completed) / float64(required) * 100
 }
+
+// Unlike percentageOf, an untracked habit (denominator 0, e.g. just created)
+// reports 0% rather than 100% — there's no basis yet to call it "done".
+func habitProgressPercentage(completed, denominator int) float64 {
+	if denominator == 0 {
+		return 0
+	}
+	return percentageOf(completed, denominator)
+}

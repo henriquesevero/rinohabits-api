@@ -63,7 +63,7 @@ func (h HabitHandler) Create(w http.ResponseWriter, r *http.Request) {
 		MonthlyTarget:   req.MonthlyTarget,
 	})
 	if err != nil {
-		if errors.Is(err, domainhabit.ErrNoSchedule) {
+		if errors.Is(err, domainhabit.ErrNoSchedule) || errors.Is(err, domainhabit.ErrInvalidWeekday) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -189,7 +189,7 @@ func (h HabitHandler) Update(w http.ResponseWriter, r *http.Request) {
 		MonthlyTarget:   req.MonthlyTarget,
 	})
 	if err != nil {
-		if errors.Is(err, domainhabit.ErrNoSchedule) {
+		if errors.Is(err, domainhabit.ErrNoSchedule) || errors.Is(err, domainhabit.ErrInvalidWeekday) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

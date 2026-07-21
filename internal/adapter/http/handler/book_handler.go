@@ -50,7 +50,7 @@ func NewBookHandler(
 		create: create, list: list, update: update,
 		registerReading: registerReading, delete: delete,
 		readingStats: readingStats,
-		books: books, storage: storage,
+		books:        books, storage: storage,
 		googleBooksKey: googleBooksKey,
 	}
 }
@@ -312,12 +312,16 @@ func (h BookHandler) UploadCover(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing cover file")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	contentType, ok := allowedImageTypes[ext]
 	if !ok {
 		writeError(w, http.StatusBadRequest, "only jpg, png and webp are allowed")
+		return
+	}
+	if err := validateImageContent(file, contentType); err != nil {
+		writeError(w, http.StatusBadRequest, "file content does not match its extension")
 		return
 	}
 
@@ -343,22 +347,22 @@ func (h BookHandler) SearchBooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	searchType := r.URL.Query().Get("type")   // "title" | "author" | "" (general)
-	source := r.URL.Query().Get("source")      // "google" | "" → openlib
+	searchType := r.URL.Query().Get("type")
+	useGoogle := r.URL.Query().Get("source") == "google"
 
 	var (
 		results []dto.BookSearchResult
 		err     error
 	)
 
-	if source == "google" {
+	if useGoogle {
 		results, err = h.searchGoogleBooks(r, q, searchType)
 	} else {
 		results, err = searchOpenLibrary(r, q, searchType)
 	}
 
 	if err != nil {
-		log.Printf("books: search error (source=%s): %v", source, err)
+		log.Printf("books: search error (google=%t): %v", useGoogle, err)
 		writeError(w, http.StatusBadGateway, err.Error())
 		return
 	}
@@ -390,11 +394,11 @@ func searchOpenLibrary(r *http.Request, q, searchType string) ([]dto.BookSearchR
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach Open Library")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		io.ReadAll(resp.Body) //nolint:errcheck
-		return nil, fmt.Errorf("Open Library returned HTTP %d", resp.StatusCode)
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return nil, fmt.Errorf("unexpected status from Open Library: %d", resp.StatusCode)
 	}
 
 	var olResp struct {
@@ -463,11 +467,11 @@ func (h BookHandler) searchGoogleBooks(r *http.Request, q, searchType string) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach Google Books")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		io.ReadAll(resp.Body) //nolint:errcheck
-		return nil, fmt.Errorf("Google Books returned HTTP %d", resp.StatusCode)
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return nil, fmt.Errorf("unexpected status from Google Books: %d", resp.StatusCode)
 	}
 
 	var gbResp struct {

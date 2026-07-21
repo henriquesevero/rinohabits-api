@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 
@@ -51,7 +52,9 @@ func NewRouter(deps Dependencies) http.Handler {
 	if deps.SupabaseURL != "" && deps.SupabaseServiceKey != "" {
 		fileStorage = storage.NewSupabaseStorage(deps.SupabaseURL, deps.SupabaseServiceKey)
 	} else {
-		os.MkdirAll(uploadsDir, 0755)
+		if err := os.MkdirAll(uploadsDir, 0o750); err != nil {
+			log.Printf("failed to create uploads directory: %v", err)
+		}
 		fileStorage = storage.NewLocalStorage(uploadsDir, apiBaseURL)
 	}
 
@@ -70,11 +73,11 @@ func NewRouter(deps Dependencies) http.Handler {
 		auth.NewGetCurrentUserUseCase(users),
 		auth.NewChangeEmailUseCase(users, hasher),
 		auth.NewChangePasswordUseCase(users, hasher),
-		auth.NewDeleteAccountUseCase(users, hasher),
+		auth.NewDeleteAccountUseCase(users, hasher, books, courses, fileStorage),
+		usecasehabit.NewResetHabitsUseCase(habits),
+		usecasebook.NewResetBooksUseCase(books, fileStorage),
+		usecasecourse.NewResetCoursesUseCase(courses, fileStorage),
 		users,
-		habits,
-		books,
-		courses,
 		fileStorage,
 	)
 
@@ -95,7 +98,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasebook.NewListBooksUseCase(books),
 		usecasebook.NewUpdateBookUseCase(books, systemClock),
 		usecasebook.NewRegisterReadingUseCase(books, readingLogs, users, systemClock),
-		usecasebook.NewDeleteBookUseCase(books),
+		usecasebook.NewDeleteBookUseCase(books, fileStorage),
 		stats.NewGetReadingStatsUseCase(users, readingLogs, systemClock),
 		books,
 		fileStorage,
@@ -109,7 +112,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		usecasecourse.NewListCoursesUseCase(courses),
 		usecasecourse.NewUpdateCourseUseCase(courses, systemClock),
 		usecasecourse.NewRegisterStudyUseCase(courses, courseLogs, users, systemClock),
-		usecasecourse.NewDeleteCourseUseCase(courses),
+		usecasecourse.NewDeleteCourseUseCase(courses, fileStorage),
 		usecasecourse.NewReorderCoursesUseCase(courses),
 		stats.NewGetStudyStatsUseCase(users, courseLogs, systemClock),
 		courses,
@@ -132,10 +135,11 @@ func NewRouter(deps Dependencies) http.Handler {
 	)
 
 	protected := middleware.Authenticate(deps.TokenManager)
+	authRateLimit := middleware.RateLimit(10, 5)
 
 	mux.HandleFunc("GET /health", healthHandler(deps.Pool))
-	mux.HandleFunc("POST /auth/register", authHandler.Register)
-	mux.HandleFunc("POST /auth/login", authHandler.Login)
+	mux.Handle("POST /auth/register", authRateLimit(http.HandlerFunc(authHandler.Register)))
+	mux.Handle("POST /auth/login", authRateLimit(http.HandlerFunc(authHandler.Login)))
 	mux.Handle("GET /me", protected(http.HandlerFunc(authHandler.Me)))
 	mux.Handle("POST /me/avatar", protected(http.HandlerFunc(authHandler.UploadAvatar)))
 	mux.Handle("PATCH /me/email", protected(http.HandlerFunc(authHandler.ChangeEmail)))
@@ -189,10 +193,10 @@ func healthHandler(pool *pgxpool.Pool) http.HandlerFunc {
 
 		if err := pool.Ping(r.Context()); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]string{"status": "unavailable"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "unavailable"})
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}
 }

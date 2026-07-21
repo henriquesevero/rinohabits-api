@@ -2,6 +2,7 @@ package book
 
 import (
 	"context"
+	"path"
 
 	"github.com/google/uuid"
 
@@ -10,11 +11,12 @@ import (
 )
 
 type DeleteBookUseCase struct {
-	books port.BookRepository
+	books   port.BookRepository
+	storage port.FileStorage
 }
 
-func NewDeleteBookUseCase(books port.BookRepository) DeleteBookUseCase {
-	return DeleteBookUseCase{books: books}
+func NewDeleteBookUseCase(books port.BookRepository, storage port.FileStorage) DeleteBookUseCase {
+	return DeleteBookUseCase{books: books, storage: storage}
 }
 
 func (uc DeleteBookUseCase) Execute(ctx context.Context, userID, bookID uuid.UUID) error {
@@ -25,5 +27,10 @@ func (uc DeleteBookUseCase) Execute(ctx context.Context, userID, bookID uuid.UUI
 	if b.UserID != userID {
 		return domainbook.ErrNotFound
 	}
+
+	if b.CoverURL != nil {
+		_ = uc.storage.Delete(ctx, "books/"+bookID.String()+path.Ext(*b.CoverURL))
+	}
+
 	return uc.books.Delete(ctx, bookID)
 }

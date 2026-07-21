@@ -54,3 +54,69 @@ func New(userID uuid.UUID, title, description, link string, totalHours *float64,
 		CurrentHours: 0,
 	}
 }
+
+func (c *Course) RegisterStudy(hoursLogged float64, now time.Time) error {
+	if hoursLogged <= 0 {
+		return ErrNoProgress
+	}
+
+	newHours := c.CurrentHours + hoursLogged
+	if c.TotalHours != nil && newHours > *c.TotalHours {
+		newHours = *c.TotalHours
+	}
+	c.CurrentHours = newHours
+
+	if c.Status == StatusWantToTake {
+		c.Status = StatusTaking
+		c.StartedAt = &now
+	}
+	if c.TotalHours != nil && c.CurrentHours >= *c.TotalHours {
+		c.Status = StatusDone
+		c.FinishedAt = &now
+	}
+
+	return nil
+}
+
+func (c *Course) ChangeStatus(newStatus Status, now time.Time) error {
+	if !newStatus.IsValid() {
+		return ErrInvalidStatus
+	}
+
+	if newStatus == StatusTaking && c.StartedAt == nil {
+		c.StartedAt = &now
+	}
+	if newStatus == StatusDone && c.FinishedAt == nil {
+		c.FinishedAt = &now
+	}
+	if newStatus == StatusShelf || newStatus == StatusWantToTake {
+		c.StartedAt = nil
+		c.FinishedAt = nil
+		c.CurrentHours = 0
+	}
+
+	c.Status = newStatus
+	return nil
+}
+
+func (c *Course) UpdateDetails(title, description, link *string, totalHours *float64, collection *string) {
+	if title != nil && *title != "" {
+		c.Title = *title
+	}
+	if description != nil {
+		c.Description = *description
+	}
+	if link != nil {
+		c.Link = *link
+	}
+	if totalHours != nil {
+		c.TotalHours = totalHours
+	}
+	if collection != nil {
+		if *collection == "" {
+			c.Collection = nil
+		} else {
+			c.Collection = collection
+		}
+	}
+}

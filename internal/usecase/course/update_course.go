@@ -2,7 +2,6 @@ package course
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -39,49 +38,19 @@ func (uc UpdateCourseUseCase) Execute(ctx context.Context, in UpdateCourseInput)
 		return nil, domaincourse.ErrNotFound
 	}
 
-	if in.Title != nil && *in.Title != "" {
-		c.Title = *in.Title
-	}
-	if in.Description != nil {
-		c.Description = *in.Description
-	}
-	if in.Link != nil {
-		c.Link = *in.Link
-	}
-	if in.TotalHours != nil {
-		c.TotalHours = in.TotalHours
-	}
+	now := uc.clock.Now()
+
+	c.UpdateDetails(in.Title, in.Description, in.Link, in.TotalHours, in.Collection)
 
 	if in.Status != "" && in.Status != c.Status {
-		if !in.Status.IsValid() {
-			return nil, domaincourse.ErrInvalidStatus
-		}
-		now := uc.clock.Now()
-		if in.Status == domaincourse.StatusTaking && c.StartedAt == nil {
-			c.StartedAt = &now
-		}
-		if in.Status == domaincourse.StatusDone && c.FinishedAt == nil {
-			c.FinishedAt = &now
-		}
-		if in.Status == domaincourse.StatusShelf || in.Status == domaincourse.StatusWantToTake {
-			c.StartedAt = nil
-			c.FinishedAt = nil
-			c.CurrentHours = 0
-		}
-		c.Status = in.Status
-	}
-
-	if in.Collection != nil {
-		if *in.Collection == "" {
-			c.Collection = nil
-		} else {
-			c.Collection = in.Collection
+		if err := c.ChangeStatus(in.Status, now); err != nil {
+			return nil, err
 		}
 	}
 
 	if err := uc.courses.Update(ctx, c); err != nil {
 		return nil, err
 	}
-	c.UpdatedAt = time.Now()
+	c.UpdatedAt = now
 	return c, nil
 }

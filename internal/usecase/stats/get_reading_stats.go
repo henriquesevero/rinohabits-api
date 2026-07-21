@@ -10,12 +10,12 @@ import (
 )
 
 type ReadingStats struct {
-	PeriodType     PeriodType
-	Offset         int
-	Start          string
-	End            string
-	PagesRead      int
-	BooksFinished  int
+	PeriodType    PeriodType
+	Offset        int
+	Start         string
+	End           string
+	PagesRead     int
+	BooksFinished int
 }
 
 type GetReadingStatsUseCase struct {

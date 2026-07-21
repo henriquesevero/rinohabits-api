@@ -32,12 +32,10 @@ func (uc CreateHabitUseCase) Execute(ctx context.Context, in CreateHabitInput) (
 		return nil, domainhabit.ErrNoSchedule
 	}
 
-	weekdays := in.ActiveWeekdays
-	if in.WeeklyFrequency != nil {
-		weekdays = []int{} // frequency habits have no specific weekdays
+	h, err := domainhabit.New(in.UserID, in.Name, in.Icon, in.Color, in.ActiveWeekdays, in.WeeklyFrequency, in.MonthlyTarget)
+	if err != nil {
+		return nil, err
 	}
-
-	h := domainhabit.New(in.UserID, in.Name, in.Icon, in.Color, weekdays, in.WeeklyFrequency, in.MonthlyTarget)
 
 	if err := uc.habits.Create(ctx, h); err != nil {
 		return nil, err

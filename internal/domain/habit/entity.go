@@ -20,7 +20,13 @@ type Habit struct {
 	UpdatedAt       time.Time
 }
 
-func New(userID uuid.UUID, name, icon, color string, activeWeekdays []int, weeklyFrequency *int, monthlyTarget *int) *Habit {
+func New(userID uuid.UUID, name, icon, color string, activeWeekdays []int, weeklyFrequency *int, monthlyTarget *int) (*Habit, error) {
+	if weeklyFrequency != nil {
+		activeWeekdays = []int{}
+	} else if !validWeekdays(activeWeekdays) {
+		return nil, ErrInvalidWeekday
+	}
+
 	return &Habit{
 		ID:              uuid.New(),
 		UserID:          userID,
@@ -31,7 +37,28 @@ func New(userID uuid.UUID, name, icon, color string, activeWeekdays []int, weekl
 		WeeklyFrequency: weeklyFrequency,
 		MonthlyTarget:   monthlyTarget,
 		IsActive:        true,
+	}, nil
+}
+
+func (h *Habit) SetSchedule(activeWeekdays []int, weeklyFrequency *int) error {
+	if weeklyFrequency != nil {
+		activeWeekdays = []int{}
+	} else if !validWeekdays(activeWeekdays) {
+		return ErrInvalidWeekday
 	}
+
+	h.ActiveWeekdays = activeWeekdays
+	h.WeeklyFrequency = weeklyFrequency
+	return nil
+}
+
+func validWeekdays(weekdays []int) bool {
+	for _, d := range weekdays {
+		if d < 1 || d > 7 {
+			return false
+		}
+	}
+	return true
 }
 
 func (h *Habit) IsFrequencyBased() bool {

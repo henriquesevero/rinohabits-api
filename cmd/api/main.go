@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os/signal"
@@ -18,14 +19,23 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	cfg := config.Load()
+	if cfg.JWTSecret == "" {
+		return fmt.Errorf("JWT_SECRET environment variable must be set")
+	}
 
 	pool, err := postgres.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		return err
 	}
 	defer pool.Close()
 
@@ -34,7 +44,8 @@ func main() {
 	push.NewScheduler(pool, cfg.VAPIDPrivateKey, cfg.VAPIDPublicKey, cfg.VAPIDEmail).Start(ctx)
 
 	server := &http.Server{
-		Addr: ":" + cfg.Port,
+		Addr:              ":" + cfg.Port,
+		ReadHeaderTimeout: 10 * time.Second,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
 			Pool:               pool,
 			TokenManager:       tokenManager,
@@ -50,21 +61,29 @@ func main() {
 		}),
 	}
 
+	serveErr := make(chan error, 1)
 	go func() {
 		log.Printf("rinohabits-api listening on :%s", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error: %v", err)
+			serveErr <- err
+			return
 		}
+		serveErr <- nil
 	}()
 
-	<-ctx.Done()
+	select {
+	case err := <-serveErr:
+		return err
+	case <-ctx.Done():
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("graceful shutdown failed: %v", err)
+		return err
 	}
 
 	log.Println("rinohabits-api stopped")
+	return nil
 }

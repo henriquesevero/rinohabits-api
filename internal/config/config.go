@@ -21,7 +21,7 @@ func Load() Config {
 	return Config{
 		Port:               getEnv("PORT", "8080"),
 		DatabaseURL:        getEnv("DATABASE_URL", "postgres://rinohabits:rinohabits@localhost:5432/rinohabits?sslmode=disable"),
-		JWTSecret:          getEnv("JWT_SECRET", "dev-secret-change-me"),
+		JWTSecret:          os.Getenv("JWT_SECRET"),
 		CORSOrigin:         getEnv("CORS_ORIGIN", "*"),
 		UploadsDir:         getEnv("UPLOADS_DIR", "./uploads"),
 		APIBaseURL:         getEnv("API_BASE_URL", "http://localhost:8090"),

@@ -8,8 +8,8 @@ import (
 
 	"github.com/henriquesevero/rinohabits-api/internal/domain/dailylog"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/habit"
-	usecasehabit "github.com/henriquesevero/rinohabits-api/internal/usecase/habit"
 	"github.com/henriquesevero/rinohabits-api/internal/port"
+	usecasehabit "github.com/henriquesevero/rinohabits-api/internal/usecase/habit"
 )
 
 type GamificationResult struct {
@@ -68,7 +68,7 @@ func medalFromPct(pct float64) string {
 	}
 }
 
-func readingBonus(pages int) int {
+func readingBonusForPages(pages int) int {
 	switch {
 	case pages >= 300:
 		return 300
@@ -84,32 +84,62 @@ func readingBonus(pages int) int {
 }
 
 func computeGamification(habits []*habit.Habit, allLogs []*dailylog.DailyLog, monthlyPages []port.MonthlyPages, currentStreak int, timezone string) GamificationResult {
-	// Total pages read (for display)
-	totalPages := 0
-	for _, mp := range monthlyPages {
-		totalPages += mp.Pages
+	completedByDate := groupCompletedHabitsByDate(allLogs)
+
+	xp, perfectByMonth, activeByMonth := scoreDailyCompletions(habits, completedByDate, timezone)
+	xp += totalReadingBonus(monthlyPages)
+	xp += streakBonus(currentStreak)
+	xp += monthlyHabitBonus(perfectByMonth, activeByMonth)
+
+	level := levelFromXP(xp)
+	xpCurrent := xpForLevel(level)
+	xpNext := xpForLevel(level + 1)
+
+	curMonth := currentMonthKey(timezone)
+	perfectThisMonth := perfectByMonth[curMonth]
+	activeThisMonth := activeByMonth[curMonth]
+	monthlyPct := 0.0
+	if activeThisMonth > 0 {
+		monthlyPct = float64(perfectThisMonth) / float64(activeThisMonth) * 100
 	}
 
-	// Group completed habits by date
+	return GamificationResult{
+		TotalXP:              xp,
+		Level:                level,
+		XPInCurrentLevel:     xp - xpCurrent,
+		XPForNextLevel:       xpNext - xpCurrent,
+		CurrentStreak:        currentStreak,
+		PerfectDaysThisMonth: perfectThisMonth,
+		ActiveDaysThisMonth:  activeThisMonth,
+		MonthlyPct:           monthlyPct,
+		MonthlyMedal:         medalFromPct(monthlyPct),
+		TotalPagesRead:       sumPages(monthlyPages),
+	}
+}
+
+func sumPages(monthlyPages []port.MonthlyPages) int {
+	total := 0
+	for _, mp := range monthlyPages {
+		total += mp.Pages
+	}
+	return total
+}
+
+func groupCompletedHabitsByDate(logs []*dailylog.DailyLog) map[string]map[uuid.UUID]bool {
 	completedByDate := make(map[string]map[uuid.UUID]bool)
-	for _, l := range allLogs {
+	for _, l := range logs {
 		dateStr := l.LogDate.Format("2006-01-02")
 		if completedByDate[dateStr] == nil {
 			completedByDate[dateStr] = make(map[uuid.UUID]bool)
 		}
 		completedByDate[dateStr][l.HabitID] = true
 	}
+	return completedByDate
+}
 
-	xp := 0
-	perfectByMonth := make(map[monthKey]int)
-	activeByMonth := make(map[monthKey]int)
-
-	now := time.Now()
-	nowLocal, err := usecasehabit.LocalToday(now, timezone)
-	if err != nil {
-		nowLocal = now.UTC().Truncate(24 * time.Hour)
-	}
-	curMonth := monthKey{nowLocal.Year(), nowLocal.Month()}
+func scoreDailyCompletions(habits []*habit.Habit, completedByDate map[string]map[uuid.UUID]bool, timezone string) (xp int, perfectByMonth, activeByMonth map[monthKey]int) {
+	perfectByMonth = make(map[monthKey]int)
+	activeByMonth = make(map[monthKey]int)
 
 	for dateStr, completedHabits := range completedByDate {
 		date, err := time.Parse("2006-01-02", dateStr)
@@ -130,36 +160,48 @@ func computeGamification(habits []*habit.Habit, allLogs []*dailylog.DailyLog, mo
 		mk := monthKey{date.Year(), date.Month()}
 		activeByMonth[mk]++
 
-		allCompleted := true
-		for _, h := range effective {
-			if !completedHabits[h.ID] {
-				allCompleted = false
-				break
-			}
-		}
-
-		if allCompleted {
+		if allCompleted(effective, completedHabits) {
 			xp += 50
 			perfectByMonth[mk]++
 		}
 	}
 
-	// Reading bonus: fixed XP tier per month (resets each month)
-	for _, mp := range monthlyPages {
-		xp += readingBonus(mp.Pages)
-	}
+	return xp, perfectByMonth, activeByMonth
+}
 
-	// Streak milestone (current streak only)
+func allCompleted(habits []*habit.Habit, completedHabits map[uuid.UUID]bool) bool {
+	for _, h := range habits {
+		if !completedHabits[h.ID] {
+			return false
+		}
+	}
+	return true
+}
+
+// Reading bonus is a fixed XP tier per month rather than per page, so it resets each month.
+func totalReadingBonus(monthlyPages []port.MonthlyPages) int {
+	bonus := 0
+	for _, mp := range monthlyPages {
+		bonus += readingBonusForPages(mp.Pages)
+	}
+	return bonus
+}
+
+func streakBonus(currentStreak int) int {
 	switch {
 	case currentStreak >= 30:
-		xp += 600
+		return 600
 	case currentStreak >= 14:
-		xp += 250
+		return 250
 	case currentStreak >= 7:
-		xp += 100
+		return 100
+	default:
+		return 0
 	}
+}
 
-	// Monthly habit bonus (all months including current)
+func monthlyHabitBonus(perfectByMonth, activeByMonth map[monthKey]int) int {
+	bonus := 0
 	for mk, perfectDays := range perfectByMonth {
 		activeDays := activeByMonth[mk]
 		if activeDays == 0 {
@@ -168,35 +210,21 @@ func computeGamification(habits []*habit.Habit, allLogs []*dailylog.DailyLog, mo
 		pct := float64(perfectDays) / float64(activeDays) * 100
 		switch {
 		case pct >= 100:
-			xp += 700
+			bonus += 700
 		case pct >= 75:
-			xp += 300
+			bonus += 300
 		case pct >= 50:
-			xp += 150
+			bonus += 150
 		}
 	}
+	return bonus
+}
 
-	level := levelFromXP(xp)
-	xpCurrent := xpForLevel(level)
-	xpNext := xpForLevel(level + 1)
-
-	perfectThisMonth := perfectByMonth[curMonth]
-	activeThisMonth := activeByMonth[curMonth]
-	monthlyPct := 0.0
-	if activeThisMonth > 0 {
-		monthlyPct = float64(perfectThisMonth) / float64(activeThisMonth) * 100
+func currentMonthKey(timezone string) monthKey {
+	now := time.Now()
+	nowLocal, err := usecasehabit.LocalToday(now, timezone)
+	if err != nil {
+		nowLocal = now.UTC().Truncate(24 * time.Hour)
 	}
-
-	return GamificationResult{
-		TotalXP:              xp,
-		Level:                level,
-		XPInCurrentLevel:     xp - xpCurrent,
-		XPForNextLevel:       xpNext - xpCurrent,
-		CurrentStreak:        currentStreak,
-		PerfectDaysThisMonth: perfectThisMonth,
-		ActiveDaysThisMonth:  activeThisMonth,
-		MonthlyPct:           monthlyPct,
-		MonthlyMedal:         medalFromPct(monthlyPct),
-		TotalPagesRead:       totalPages,
-	}
+	return monthKey{nowLocal.Year(), nowLocal.Month()}
 }

@@ -51,25 +51,13 @@ func (uc RegisterStudyUseCase) Execute(ctx context.Context, in RegisterStudyInpu
 		return nil, err
 	}
 
-	logEntry := courselog.New(in.UserID, in.CourseID, today, in.HoursLoggedNow)
-	if err := uc.logs.Upsert(ctx, logEntry); err != nil {
+	if err := c.RegisterStudy(in.HoursLoggedNow, uc.clock.Now()); err != nil {
 		return nil, err
 	}
 
-	newHours := c.CurrentHours + in.HoursLoggedNow
-	if c.TotalHours != nil && newHours > *c.TotalHours {
-		newHours = *c.TotalHours
-	}
-	c.CurrentHours = newHours
-
-	now := uc.clock.Now()
-	if c.Status == domaincourse.StatusWantToTake {
-		c.Status = domaincourse.StatusTaking
-		c.StartedAt = &now
-	}
-	if c.TotalHours != nil && c.CurrentHours >= *c.TotalHours {
-		c.Status = domaincourse.StatusDone
-		c.FinishedAt = &now
+	logEntry := courselog.New(in.UserID, in.CourseID, today, in.HoursLoggedNow)
+	if err := uc.logs.Upsert(ctx, logEntry); err != nil {
+		return nil, err
 	}
 
 	if err := uc.courses.Update(ctx, c); err != nil {
