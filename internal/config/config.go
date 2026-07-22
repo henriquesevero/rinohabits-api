@@ -15,6 +15,7 @@ type Config struct {
 	VAPIDPublicKey     string
 	VAPIDEmail         string
 	GoogleBooksAPIKey  string
+	RegistrationCode   string
 }
 
 func Load() Config {
@@ -31,6 +32,7 @@ func Load() Config {
 		VAPIDPublicKey:     getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDEmail:         getEnv("VAPID_EMAIL", "contato@henriquesevero.com"),
 		GoogleBooksAPIKey:  getEnv("GOOGLE_BOOKS_API_KEY", ""),
+		RegistrationCode:   os.Getenv("REGISTRATION_CODE"),
 	}
 }
 

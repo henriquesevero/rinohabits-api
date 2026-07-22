@@ -22,11 +22,12 @@ type UpdateBookInput struct {
 
 type UpdateBookUseCase struct {
 	books port.BookRepository
+	logs  port.ReadingLogRepository
 	clock port.Clock
 }
 
-func NewUpdateBookUseCase(books port.BookRepository, clock port.Clock) UpdateBookUseCase {
-	return UpdateBookUseCase{books: books, clock: clock}
+func NewUpdateBookUseCase(books port.BookRepository, logs port.ReadingLogRepository, clock port.Clock) UpdateBookUseCase {
+	return UpdateBookUseCase{books: books, logs: logs, clock: clock}
 }
 
 func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*domainbook.Book, error) {
@@ -42,8 +43,10 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 
 	b.UpdateDetails(in.Title, in.Author, in.TotalPages, in.Collection)
 
+	resetProgress := false
 	if in.Status != "" && in.Status != b.Status {
-		if err := b.ChangeStatus(in.Status, now); err != nil {
+		resetProgress, err = b.ChangeStatus(in.Status, now)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -56,5 +59,12 @@ func (uc UpdateBookUseCase) Execute(ctx context.Context, in UpdateBookInput) (*d
 		return nil, err
 	}
 	b.UpdatedAt = now
+
+	if resetProgress {
+		if err := uc.logs.DeleteAllByBook(ctx, b.ID); err != nil {
+			return nil, err
+		}
+	}
+
 	return b, nil
 }

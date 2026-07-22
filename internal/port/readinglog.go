@@ -21,4 +21,5 @@ type ReadingLogRepository interface {
 	SumAllPagesByUser(ctx context.Context, userID uuid.UUID) (int, error)
 	ListMonthlyPagesByUser(ctx context.Context, userID uuid.UUID) ([]MonthlyPages, error)
 	CountBooksFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error)
+	DeleteAllByBook(ctx context.Context, bookID uuid.UUID) error
 }

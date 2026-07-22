@@ -7,4 +7,5 @@ var (
 	ErrNotFound               = errors.New("user not found")
 	ErrInvalidCredentials     = errors.New("invalid credentials")
 	ErrWrongPassword          = errors.New("current password is incorrect")
+	ErrInvalidInviteCode      = errors.New("invalid access code")
 )

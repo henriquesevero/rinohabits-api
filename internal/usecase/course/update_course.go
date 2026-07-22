@@ -22,11 +22,12 @@ type UpdateCourseInput struct {
 
 type UpdateCourseUseCase struct {
 	courses port.CourseRepository
+	logs    port.CourseLogRepository
 	clock   port.Clock
 }
 
-func NewUpdateCourseUseCase(courses port.CourseRepository, clock port.Clock) UpdateCourseUseCase {
-	return UpdateCourseUseCase{courses: courses, clock: clock}
+func NewUpdateCourseUseCase(courses port.CourseRepository, logs port.CourseLogRepository, clock port.Clock) UpdateCourseUseCase {
+	return UpdateCourseUseCase{courses: courses, logs: logs, clock: clock}
 }
 
 func (uc UpdateCourseUseCase) Execute(ctx context.Context, in UpdateCourseInput) (*domaincourse.Course, error) {
@@ -42,8 +43,10 @@ func (uc UpdateCourseUseCase) Execute(ctx context.Context, in UpdateCourseInput)
 
 	c.UpdateDetails(in.Title, in.Description, in.Link, in.TotalHours, in.Collection)
 
+	resetProgress := false
 	if in.Status != "" && in.Status != c.Status {
-		if err := c.ChangeStatus(in.Status, now); err != nil {
+		resetProgress, err = c.ChangeStatus(in.Status, now)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -52,5 +55,12 @@ func (uc UpdateCourseUseCase) Execute(ctx context.Context, in UpdateCourseInput)
 		return nil, err
 	}
 	c.UpdatedAt = now
+
+	if resetProgress {
+		if err := uc.logs.DeleteAllByCourse(ctx, c.ID); err != nil {
+			return nil, err
+		}
+	}
+
 	return c, nil
 }

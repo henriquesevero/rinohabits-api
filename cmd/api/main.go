@@ -58,6 +58,7 @@ func run() error {
 			VAPIDPublicKey:     cfg.VAPIDPublicKey,
 			VAPIDEmail:         cfg.VAPIDEmail,
 			GoogleBooksAPIKey:  cfg.GoogleBooksAPIKey,
+			RegistrationCode:   cfg.RegistrationCode,
 		}),
 	}
 

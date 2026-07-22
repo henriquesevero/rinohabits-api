@@ -78,9 +78,13 @@ func (c *Course) RegisterStudy(hoursLogged float64, now time.Time) error {
 	return nil
 }
 
-func (c *Course) ChangeStatus(newStatus Status, now time.Time) error {
+// ChangeStatus applies the status transition and reports whether progress was
+// reset (back to shelf/want-to-take), so the caller knows to also discard the
+// course's study history — otherwise past course_logs would keep counting
+// toward stats for a course that's no longer marked as done or in progress.
+func (c *Course) ChangeStatus(newStatus Status, now time.Time) (resetProgress bool, err error) {
 	if !newStatus.IsValid() {
-		return ErrInvalidStatus
+		return false, ErrInvalidStatus
 	}
 
 	if newStatus == StatusTaking && c.StartedAt == nil {
@@ -93,10 +97,11 @@ func (c *Course) ChangeStatus(newStatus Status, now time.Time) error {
 		c.StartedAt = nil
 		c.FinishedAt = nil
 		c.CurrentHours = 0
+		resetProgress = true
 	}
 
 	c.Status = newStatus
-	return nil
+	return resetProgress, nil
 }
 
 func (c *Course) UpdateDetails(title, description, link *string, totalHours *float64, collection *string) {

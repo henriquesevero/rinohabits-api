@@ -85,3 +85,8 @@ func (r ReadingLogRepository) CountBooksFinishedByUserAndDateRange(ctx context.C
 	).Scan(&count)
 	return count, err
 }
+
+func (r ReadingLogRepository) DeleteAllByBook(ctx context.Context, bookID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM reading_logs WHERE book_id = $1`, bookID)
+	return err
+}

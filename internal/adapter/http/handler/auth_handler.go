@@ -72,16 +72,20 @@ func (h AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := h.register.Execute(r.Context(), auth.RegisterInput{
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: req.Password,
-		Timezone: req.Timezone,
+		Name:       req.Name,
+		Email:      req.Email,
+		Password:   req.Password,
+		Timezone:   req.Timezone,
+		InviteCode: req.InviteCode,
 	}); err != nil {
-		if errors.Is(err, user.ErrEmailAlreadyRegistered) {
+		switch {
+		case errors.Is(err, user.ErrInvalidInviteCode):
+			writeError(w, http.StatusForbidden, err.Error())
+		case errors.Is(err, user.ErrEmailAlreadyRegistered):
 			writeError(w, http.StatusConflict, err.Error())
-			return
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to register user")
 		}
-		writeError(w, http.StatusInternalServerError, "failed to register user")
 		return
 	}
 

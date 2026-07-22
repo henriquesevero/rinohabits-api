@@ -48,3 +48,8 @@ func (r CourseLogRepository) CountCoursesFinishedByUserAndDateRange(ctx context.
 	).Scan(&count)
 	return count, err
 }
+
+func (r CourseLogRepository) DeleteAllByCourse(ctx context.Context, courseID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM course_logs WHERE course_id = $1`, courseID)
+	return err
+}

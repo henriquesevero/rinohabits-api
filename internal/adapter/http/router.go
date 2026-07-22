@@ -34,6 +34,7 @@ type Dependencies struct {
 	VAPIDPublicKey     string
 	VAPIDEmail         string
 	GoogleBooksAPIKey  string
+	RegistrationCode   string
 }
 
 func NewRouter(deps Dependencies) http.Handler {
@@ -68,7 +69,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	courses := postgres.NewCourseRepository(deps.Pool)
 
 	authHandler := handler.NewAuthHandler(
-		auth.NewRegisterUseCase(users, hasher),
+		auth.NewRegisterUseCase(users, hasher, deps.RegistrationCode),
 		auth.NewLoginUseCase(users, hasher, deps.TokenManager),
 		auth.NewGetCurrentUserUseCase(users),
 		auth.NewChangeEmailUseCase(users, hasher),
@@ -96,7 +97,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	bookHandler := handler.NewBookHandler(
 		usecasebook.NewCreateBookUseCase(books),
 		usecasebook.NewListBooksUseCase(books),
-		usecasebook.NewUpdateBookUseCase(books, systemClock),
+		usecasebook.NewUpdateBookUseCase(books, readingLogs, systemClock),
 		usecasebook.NewRegisterReadingUseCase(books, readingLogs, users, systemClock),
 		usecasebook.NewDeleteBookUseCase(books, fileStorage),
 		stats.NewGetReadingStatsUseCase(users, readingLogs, systemClock),
@@ -110,7 +111,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	courseHandler := handler.NewCourseHandler(
 		usecasecourse.NewCreateCourseUseCase(courses),
 		usecasecourse.NewListCoursesUseCase(courses),
-		usecasecourse.NewUpdateCourseUseCase(courses, systemClock),
+		usecasecourse.NewUpdateCourseUseCase(courses, courseLogs, systemClock),
 		usecasecourse.NewRegisterStudyUseCase(courses, courseLogs, users, systemClock),
 		usecasecourse.NewDeleteCourseUseCase(courses, fileStorage),
 		usecasecourse.NewReorderCoursesUseCase(courses),

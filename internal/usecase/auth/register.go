@@ -9,22 +9,28 @@ import (
 )
 
 type RegisterInput struct {
-	Name     string
-	Email    string
-	Password string
-	Timezone string
+	Name       string
+	Email      string
+	Password   string
+	Timezone   string
+	InviteCode string
 }
 
 type RegisterUseCase struct {
-	users  port.UserRepository
-	hasher port.PasswordHasher
+	users              port.UserRepository
+	hasher             port.PasswordHasher
+	requiredInviteCode string
 }
 
-func NewRegisterUseCase(users port.UserRepository, hasher port.PasswordHasher) RegisterUseCase {
-	return RegisterUseCase{users: users, hasher: hasher}
+func NewRegisterUseCase(users port.UserRepository, hasher port.PasswordHasher, requiredInviteCode string) RegisterUseCase {
+	return RegisterUseCase{users: users, hasher: hasher, requiredInviteCode: requiredInviteCode}
 }
 
 func (uc RegisterUseCase) Execute(ctx context.Context, in RegisterInput) (*user.User, error) {
+	if uc.requiredInviteCode != "" && in.InviteCode != uc.requiredInviteCode {
+		return nil, user.ErrInvalidInviteCode
+	}
+
 	existing, err := uc.users.FindByEmail(ctx, in.Email)
 	if err != nil && !errors.Is(err, user.ErrNotFound) {
 		return nil, err

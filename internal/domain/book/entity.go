@@ -75,9 +75,13 @@ func (b *Book) RegisterReading(pagesRead int, now time.Time) error {
 	return nil
 }
 
-func (b *Book) ChangeStatus(newStatus Status, now time.Time) error {
+// ChangeStatus applies the status transition and reports whether progress was
+// reset (back to shelf/want-to-read), so the caller knows to also discard the
+// book's reading history — otherwise past reading_logs would keep counting
+// toward stats for a book that's no longer marked as read or in progress.
+func (b *Book) ChangeStatus(newStatus Status, now time.Time) (resetProgress bool, err error) {
 	if !newStatus.IsValid() {
-		return ErrInvalidStatus
+		return false, ErrInvalidStatus
 	}
 
 	if newStatus == StatusReading && b.StartedAt == nil {
@@ -93,10 +97,11 @@ func (b *Book) ChangeStatus(newStatus Status, now time.Time) error {
 		b.StartedAt = nil
 		b.FinishedAt = nil
 		b.CurrentPage = 0
+		resetProgress = true
 	}
 
 	b.Status = newStatus
-	return nil
+	return resetProgress, nil
 }
 
 func (b *Book) UpdateDetails(title, author *string, totalPages *int, collection *string) {
