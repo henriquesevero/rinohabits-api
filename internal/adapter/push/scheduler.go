@@ -16,8 +16,6 @@ import (
 	"github.com/henriquesevero/rinohabits-api/internal/domain/notification"
 )
 
-const notificationTitle = "RinoHabits"
-
 var sendHours = map[int]string{
 	9:  "morning",
 	15: "afternoon",
@@ -81,8 +79,8 @@ func (s *Scheduler) sendReminders(ctx context.Context, slot string) {
 	log.Printf("push scheduler: sending slot=%s to %d subscriber(s)", slot, len(targets))
 	sent := 0
 	for _, t := range targets {
-		body := buildMessage(slot, firstName(t.UserName), t.Incomplete)
-		if err := Send(t, notificationTitle, body, s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
+		title, body := buildMessage(slot, firstName(t.UserName), t.Incomplete)
+		if err := Send(t, title, body, s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
 			log.Printf("push scheduler: send error: %v", err)
 			continue
 		}
@@ -91,14 +89,14 @@ func (s *Scheduler) sendReminders(ctx context.Context, slot string) {
 	log.Printf("push scheduler: sent %d/%d for slot=%s", sent, len(targets), slot)
 }
 
-func buildMessage(slot, name string, incomplete int) string {
+func buildMessage(slot, name string, incomplete int) (title, body string) {
 	switch slot {
 	case "morning":
-		return name + ", bom dia! Não esqueça dos seus hábitos hoje 💪"
+		return "Bom dia! 💪", name + ", não esqueça dos seus hábitos hoje."
 	case "afternoon":
-		return name + ", " + formatCount(incomplete) + " para completar hoje!"
+		return "Seus hábitos de hoje", name + ", " + formatCount(incomplete) + " para completar."
 	default: // evening
-		return name + ", último aviso! " + formatCount(incomplete) + " — não perca sua sequência 🔥"
+		return "Último aviso! 🔥", name + ", " + formatCount(incomplete) + " — não perca sua sequência."
 	}
 }
 
