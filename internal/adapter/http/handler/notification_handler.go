@@ -9,6 +9,7 @@ import (
 
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/http/middleware"
 	"github.com/henriquesevero/rinohabits-api/internal/adapter/postgres"
+	"github.com/henriquesevero/rinohabits-api/internal/adapter/push"
 	"github.com/henriquesevero/rinohabits-api/internal/domain/notification"
 )
 
@@ -78,6 +79,29 @@ func (h NotificationHandler) Unsubscribe(w http.ResponseWriter, r *http.Request)
 	if err := h.repo.DeleteByEndpoint(r.Context(), userID, req.Endpoint); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete subscription")
 		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h NotificationHandler) SendTest(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+
+	targets, err := h.repo.TargetsByUser(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load subscriptions")
+		return
+	}
+
+	for _, t := range targets {
+		title, body := push.TestMessage(t.UserName, t.Incomplete)
+		if err := push.Send(t, title, body, h.vapidPublicKey, h.vapidPrivateKey, h.vapidEmail); err != nil {
+			log.Printf("notifications: test send error: %v", err)
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)

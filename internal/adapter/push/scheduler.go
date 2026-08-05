@@ -89,6 +89,10 @@ func (s *Scheduler) sendReminders(ctx context.Context, slot string) {
 	log.Printf("push scheduler: sent %d/%d for slot=%s", sent, len(targets), slot)
 }
 
+func TestMessage(name string, incomplete int) (title, body string) {
+	return buildMessage("afternoon", firstName(name), incomplete)
+}
+
 func buildMessage(slot, name string, incomplete int) (title, body string) {
 	switch slot {
 	case "morning":

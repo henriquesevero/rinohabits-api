@@ -36,6 +36,39 @@ func (r PushSubscriptionRepository) DeleteByEndpoint(ctx context.Context, userID
 	return err
 }
 
+func (r PushSubscriptionRepository) TargetsByUser(ctx context.Context, userID uuid.UUID) ([]*notification.ReminderTarget, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT ps.endpoint, ps.p256dh, ps.auth_key, u.name,
+		   (SELECT COUNT(*) FROM habits h
+		      WHERE h.user_id = ps.user_id AND h.is_active
+		        AND EXTRACT(ISODOW FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::int = ANY(h.active_weekdays)
+		        AND NOT EXISTS (
+		            SELECT 1 FROM daily_logs dl
+		            WHERE dl.habit_id = h.id
+		              AND dl.log_date = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+		        )
+		   ) AS incomplete
+		 FROM push_subscriptions ps
+		 JOIN users u ON u.id = ps.user_id
+		 WHERE ps.user_id = $1`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var targets []*notification.ReminderTarget
+	for rows.Next() {
+		t := &notification.ReminderTarget{}
+		if err := rows.Scan(&t.Endpoint, &t.P256DH, &t.Auth, &t.UserName, &t.Incomplete); err != nil {
+			return nil, err
+		}
+		targets = append(targets, t)
+	}
+	return targets, rows.Err()
+}
+
 // ReminderTargets returns all subscriptions for users who still have incomplete habits today (BRT timezone).
 func (r PushSubscriptionRepository) ReminderTargets(ctx context.Context) ([]*notification.ReminderTarget, error) {
 	rows, err := r.pool.Query(ctx,
