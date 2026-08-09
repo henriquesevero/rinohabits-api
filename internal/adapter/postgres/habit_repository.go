@@ -96,6 +96,11 @@ func (r HabitRepository) DeleteAllByUser(ctx context.Context, userID uuid.UUID) 
 	return err
 }
 
+func (r HabitRepository) RestartCreatedAt(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `UPDATE habits SET created_at = now() WHERE user_id = $1`, userID)
+	return err
+}
+
 func (r HabitRepository) ReorderHabits(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
 	batch := &pgx.Batch{}
 	for i, id := range ids {

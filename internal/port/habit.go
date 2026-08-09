@@ -16,4 +16,5 @@ type HabitRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	DeleteAllByUser(ctx context.Context, userID uuid.UUID) error
 	ReorderHabits(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error
+	RestartCreatedAt(ctx context.Context, userID uuid.UUID) error
 }

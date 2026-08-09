@@ -76,6 +76,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		auth.NewChangePasswordUseCase(users, hasher),
 		auth.NewDeleteAccountUseCase(users, hasher, books, courses, fileStorage),
 		usecasehabit.NewResetHabitsUseCase(habits),
+		usecasehabit.NewRestartHabitsUseCase(habits, dailyLogs),
 		usecasebook.NewResetBooksUseCase(books, fileStorage),
 		usecasecourse.NewResetCoursesUseCase(courses, fileStorage),
 		users,
@@ -149,6 +150,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.Handle("PATCH /me/course-collection-order", protected(http.HandlerFunc(authHandler.UpdateCourseCollectionOrder)))
 	mux.Handle("DELETE /me", protected(http.HandlerFunc(authHandler.DeleteAccount)))
 	mux.Handle("DELETE /me/habits", protected(http.HandlerFunc(authHandler.ResetHabits)))
+	mux.Handle("POST /me/habits/restart", protected(http.HandlerFunc(authHandler.RestartHabits)))
 	mux.Handle("DELETE /me/books", protected(http.HandlerFunc(authHandler.ResetBooks)))
 	mux.Handle("DELETE /me/courses", protected(http.HandlerFunc(authHandler.ResetCourses)))
 	mux.Handle("POST /habits", protected(http.HandlerFunc(habitHandler.Create)))

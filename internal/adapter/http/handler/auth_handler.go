@@ -25,6 +25,7 @@ type AuthHandler struct {
 	changePassword auth.ChangePasswordUseCase
 	deleteAccount  auth.DeleteAccountUseCase
 	resetHabits    usecasehabit.ResetHabitsUseCase
+	restartHabits  usecasehabit.RestartHabitsUseCase
 	resetBooks     usecasebook.ResetBooksUseCase
 	resetCourses   usecasecourse.ResetCoursesUseCase
 	users          port.UserRepository
@@ -39,6 +40,7 @@ func NewAuthHandler(
 	changePassword auth.ChangePasswordUseCase,
 	deleteAccount auth.DeleteAccountUseCase,
 	resetHabits usecasehabit.ResetHabitsUseCase,
+	restartHabits usecasehabit.RestartHabitsUseCase,
 	resetBooks usecasebook.ResetBooksUseCase,
 	resetCourses usecasecourse.ResetCoursesUseCase,
 	users port.UserRepository,
@@ -47,7 +49,7 @@ func NewAuthHandler(
 	return AuthHandler{
 		register: register, login: login, me: me,
 		changeEmail: changeEmail, changePassword: changePassword, deleteAccount: deleteAccount,
-		resetHabits: resetHabits, resetBooks: resetBooks, resetCourses: resetCourses,
+		resetHabits: resetHabits, restartHabits: restartHabits, resetBooks: resetBooks, resetCourses: resetCourses,
 		users: users, storage: storage,
 	}
 }
@@ -342,6 +344,19 @@ func (h AuthHandler) ResetHabits(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.resetHabits.Execute(r.Context(), userID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to reset habits")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h AuthHandler) RestartHabits(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authenticated user")
+		return
+	}
+	if err := h.restartHabits.Execute(r.Context(), userID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to restart habits")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
