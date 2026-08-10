@@ -28,40 +28,40 @@ func NewRegisterStudyUseCase(courses port.CourseRepository, logs port.CourseLogR
 	return RegisterStudyUseCase{courses: courses, logs: logs, users: users, clock: clock}
 }
 
-func (uc RegisterStudyUseCase) Execute(ctx context.Context, in RegisterStudyInput) (*domaincourse.Course, error) {
+func (uc RegisterStudyUseCase) Execute(ctx context.Context, in RegisterStudyInput) (*domaincourse.Course, bool, error) {
 	if in.HoursLoggedNow <= 0 {
-		return nil, domaincourse.ErrNoProgress
+		return nil, false, domaincourse.ErrNoProgress
 	}
 
 	c, err := uc.courses.FindByID(ctx, in.CourseID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if c.UserID != in.UserID {
-		return nil, domaincourse.ErrNotFound
+		return nil, false, domaincourse.ErrNotFound
 	}
 
 	u, err := uc.users.FindByID(ctx, in.UserID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	today, err := usecasehabit.LocalToday(uc.clock.Now(), u.Timezone)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if err := c.RegisterStudy(in.HoursLoggedNow, uc.clock.Now()); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	logEntry := courselog.New(in.UserID, in.CourseID, today, in.HoursLoggedNow)
 	if err := uc.logs.Upsert(ctx, logEntry); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if err := uc.courses.Update(ctx, c); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return c, nil
+	return c, true, nil
 }

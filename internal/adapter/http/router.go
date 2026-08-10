@@ -111,8 +111,8 @@ func NewRouter(deps Dependencies) http.Handler {
 
 	courseHandler := handler.NewCourseHandler(
 		usecasecourse.NewCreateCourseUseCase(courses),
-		usecasecourse.NewListCoursesUseCase(courses),
-		usecasecourse.NewUpdateCourseUseCase(courses, courseLogs, systemClock),
+		usecasecourse.NewListCoursesUseCase(courses, courseLogs, users, systemClock),
+		usecasecourse.NewUpdateCourseUseCase(courses, courseLogs, users, systemClock),
 		usecasecourse.NewRegisterStudyUseCase(courses, courseLogs, users, systemClock),
 		usecasecourse.NewDeleteCourseUseCase(courses, fileStorage),
 		usecasecourse.NewReorderCoursesUseCase(courses),

@@ -80,7 +80,7 @@ func (h CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, toCourseResponse(c))
+	writeJSON(w, http.StatusCreated, toCourseResponse(c, false))
 }
 
 func (h CourseHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +96,7 @@ func (h CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 		statusFilter = &st
 	}
 
-	courses, err := h.list.Execute(r.Context(), userID, statusFilter)
+	courses, studiedToday, err := h.list.Execute(r.Context(), userID, statusFilter)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list courses")
 		return
@@ -104,7 +104,7 @@ func (h CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]dto.CourseResponse, 0, len(courses))
 	for _, c := range courses {
-		resp = append(resp, toCourseResponse(c))
+		resp = append(resp, toCourseResponse(c, studiedToday[c.ID]))
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -128,7 +128,7 @@ func (h CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := h.update.Execute(r.Context(), usecasecourse.UpdateCourseInput{
+	input := usecasecourse.UpdateCourseInput{
 		UserID:      userID,
 		CourseID:    courseID,
 		Title:       req.Title,
@@ -137,12 +137,22 @@ func (h CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		TotalHours:  req.TotalHours,
 		Status:      domaincourse.Status(req.Status),
 		Collection:  req.Collection,
-	})
+	}
+	if req.ActiveWeekdays != nil {
+		input.ScheduleProvided = true
+		input.ActiveWeekdays = *req.ActiveWeekdays
+		input.ReminderHour = req.ReminderHour
+		input.ReminderMinute = req.ReminderMinute
+	}
+
+	c, studiedToday, err := h.update.Execute(r.Context(), input)
 	if err != nil {
 		switch {
 		case errors.Is(err, domaincourse.ErrNotFound):
 			writeError(w, http.StatusNotFound, "course not found")
-		case errors.Is(err, domaincourse.ErrInvalidStatus):
+		case errors.Is(err, domaincourse.ErrInvalidStatus),
+			errors.Is(err, domaincourse.ErrInvalidWeekday),
+			errors.Is(err, domaincourse.ErrInvalidReminderTime):
 			writeError(w, http.StatusBadRequest, err.Error())
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to update course")
@@ -150,7 +160,7 @@ func (h CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, toCourseResponse(c))
+	writeJSON(w, http.StatusOK, toCourseResponse(c, studiedToday))
 }
 
 func (h CourseHandler) RegisterStudy(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +182,7 @@ func (h CourseHandler) RegisterStudy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := h.registerStudy.Execute(r.Context(), usecasecourse.RegisterStudyInput{
+	c, studiedToday, err := h.registerStudy.Execute(r.Context(), usecasecourse.RegisterStudyInput{
 		UserID:         userID,
 		CourseID:       courseID,
 		HoursLoggedNow: req.HoursLoggedNow,
@@ -189,7 +199,7 @@ func (h CourseHandler) RegisterStudy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, toCourseResponse(c))
+	writeJSON(w, http.StatusOK, toCourseResponse(c, studiedToday))
 }
 
 func (h CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +344,7 @@ func (h CourseHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func toCourseResponse(c *domaincourse.Course) dto.CourseResponse {
+func toCourseResponse(c *domaincourse.Course, studiedToday bool) dto.CourseResponse {
 	var percentage float64
 	if c.TotalHours != nil && *c.TotalHours > 0 {
 		percentage = c.CurrentHours / *c.TotalHours * 100
@@ -351,17 +361,21 @@ func toCourseResponse(c *domaincourse.Course) dto.CourseResponse {
 	}
 
 	return dto.CourseResponse{
-		ID:           c.ID.String(),
-		Title:        c.Title,
-		Description:  c.Description,
-		Link:         c.Link,
-		Status:       string(c.Status),
-		TotalHours:   c.TotalHours,
-		CurrentHours: c.CurrentHours,
-		Percentage:   percentage,
-		Collection:   c.Collection,
-		CoverURL:     c.CoverURL,
-		StartedAt:    startedAt,
-		FinishedAt:   finishedAt,
+		ID:             c.ID.String(),
+		Title:          c.Title,
+		Description:    c.Description,
+		Link:           c.Link,
+		Status:         string(c.Status),
+		TotalHours:     c.TotalHours,
+		CurrentHours:   c.CurrentHours,
+		Percentage:     percentage,
+		Collection:     c.Collection,
+		CoverURL:       c.CoverURL,
+		StartedAt:      startedAt,
+		FinishedAt:     finishedAt,
+		ActiveWeekdays: c.ActiveWeekdays,
+		ReminderHour:   c.ReminderHour,
+		ReminderMinute: c.ReminderMinute,
+		StudiedToday:   studiedToday,
 	}
 }

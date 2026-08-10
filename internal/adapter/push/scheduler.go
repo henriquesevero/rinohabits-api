@@ -62,6 +62,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			if ok && now.Minute() == 0 {
 				s.sendReminders(ctx, slot)
 			}
+			s.sendCourseReminders(ctx)
 		}
 	}()
 }
@@ -87,6 +88,33 @@ func (s *Scheduler) sendReminders(ctx context.Context, slot string) {
 		sent++
 	}
 	log.Printf("push scheduler: sent %d/%d for slot=%s", sent, len(targets), slot)
+}
+
+func (s *Scheduler) sendCourseReminders(ctx context.Context) {
+	targets, err := s.repo.CourseReminderTargets(ctx)
+	if err != nil {
+		log.Printf("push scheduler: course reminder query error: %v", err)
+		return
+	}
+	if len(targets) == 0 {
+		return
+	}
+	log.Printf("push scheduler: sending course reminders to %d subscriber(s)", len(targets))
+	sent := 0
+	for _, t := range targets {
+		title, body := buildCourseMessage(firstName(t.UserName), t.CourseTitle)
+		reminderTarget := &notification.ReminderTarget{Endpoint: t.Endpoint, P256DH: t.P256DH, Auth: t.Auth}
+		if err := Send(reminderTarget, title, body, s.vapidPublicKey, s.vapidPrivateKey, s.vapidEmail); err != nil {
+			log.Printf("push scheduler: course reminder send error: %v", err)
+			continue
+		}
+		sent++
+	}
+	log.Printf("push scheduler: sent %d/%d course reminders", sent, len(targets))
+}
+
+func buildCourseMessage(name, courseTitle string) (title, body string) {
+	return "📚 Hora de estudar!", name + ", hoje é dia de " + courseTitle + "."
 }
 
 func TestMessage(name string, incomplete int) (title, body string) {

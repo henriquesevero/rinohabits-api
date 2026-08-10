@@ -25,34 +25,72 @@ func (s Status) IsValid() bool {
 }
 
 type Course struct {
-	ID           uuid.UUID
-	UserID       uuid.UUID
-	Title        string
-	Description  string
-	Link         string
-	Status       Status
-	TotalHours   *float64
-	CurrentHours float64
-	SortOrder    int
-	Collection   *string
-	CoverURL     *string
-	StartedAt    *time.Time
-	FinishedAt   *time.Time
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	Title          string
+	Description    string
+	Link           string
+	Status         Status
+	TotalHours     *float64
+	CurrentHours   float64
+	SortOrder      int
+	Collection     *string
+	CoverURL       *string
+	StartedAt      *time.Time
+	FinishedAt     *time.Time
+	ActiveWeekdays []int
+	ReminderHour   *int
+	ReminderMinute *int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 func New(userID uuid.UUID, title, description, link string, totalHours *float64, status Status) *Course {
 	return &Course{
-		ID:           uuid.New(),
-		UserID:       userID,
-		Title:        title,
-		Description:  description,
-		Link:         link,
-		Status:       status,
-		TotalHours:   totalHours,
-		CurrentHours: 0,
+		ID:             uuid.New(),
+		UserID:         userID,
+		Title:          title,
+		Description:    description,
+		Link:           link,
+		Status:         status,
+		TotalHours:     totalHours,
+		CurrentHours:   0,
+		ActiveWeekdays: []int{},
 	}
+}
+
+// SetSchedule defines the weekly recurring days the user plans to study this
+// course, plus the daily reminder time. Passing an empty weekdays slice
+// clears the schedule entirely (no reminder without a schedule, and vice
+// versa — enforced by the courses_schedule_requires_reminder DB constraint).
+func (c *Course) SetSchedule(weekdays []int, hour, minute *int) error {
+	if len(weekdays) == 0 {
+		c.ActiveWeekdays = []int{}
+		c.ReminderHour = nil
+		c.ReminderMinute = nil
+		return nil
+	}
+
+	if !validWeekdays(weekdays) {
+		return ErrInvalidWeekday
+	}
+	if hour == nil || minute == nil || *hour < 0 || *hour > 23 || *minute < 0 || *minute > 59 {
+		return ErrInvalidReminderTime
+	}
+
+	c.ActiveWeekdays = weekdays
+	c.ReminderHour = hour
+	c.ReminderMinute = minute
+	return nil
+}
+
+func validWeekdays(weekdays []int) bool {
+	for _, d := range weekdays {
+		if d < 1 || d > 7 {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *Course) RegisterStudy(hoursLogged float64, now time.Time) error {

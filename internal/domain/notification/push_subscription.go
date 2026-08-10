@@ -22,3 +22,11 @@ type ReminderTarget struct {
 	UserName   string
 	Incomplete int
 }
+
+type CourseReminderTarget struct {
+	Endpoint    string
+	P256DH      string
+	Auth        string
+	UserName    string
+	CourseTitle string
+}

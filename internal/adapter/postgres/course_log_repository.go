@@ -53,3 +53,33 @@ func (r CourseLogRepository) DeleteAllByCourse(ctx context.Context, courseID uui
 	_, err := r.pool.Exec(ctx, `DELETE FROM course_logs WHERE course_id = $1`, courseID)
 	return err
 }
+
+func (r CourseLogRepository) ListLoggedCourseIDsForDate(ctx context.Context, userID uuid.UUID, date time.Time) ([]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT course_id FROM course_logs WHERE user_id = $1 AND log_date = $2`,
+		userID, date,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (r CourseLogRepository) ExistsForCourseAndDate(ctx context.Context, courseID uuid.UUID, date time.Time) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM course_logs WHERE course_id = $1 AND log_date = $2)`,
+		courseID, date,
+	).Scan(&exists)
+	return exists, err
+}

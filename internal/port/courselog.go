@@ -14,4 +14,6 @@ type CourseLogRepository interface {
 	SumHoursByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time) (float64, error)
 	CountCoursesFinishedByUserAndDateRange(ctx context.Context, userID uuid.UUID, start, end time.Time, timezone string) (int, error)
 	DeleteAllByCourse(ctx context.Context, courseID uuid.UUID) error
+	ListLoggedCourseIDsForDate(ctx context.Context, userID uuid.UUID, date time.Time) ([]uuid.UUID, error)
+	ExistsForCourseAndDate(ctx context.Context, courseID uuid.UUID, date time.Time) (bool, error)
 }

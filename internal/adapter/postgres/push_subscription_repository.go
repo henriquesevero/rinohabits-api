@@ -69,6 +69,42 @@ func (r PushSubscriptionRepository) TargetsByUser(ctx context.Context, userID uu
 	return targets, rows.Err()
 }
 
+// CourseReminderTargets returns all subscriptions for courses whose weekly
+// schedule and reminder time match the current minute (BRT timezone) and
+// that have no study logged yet today.
+func (r PushSubscriptionRepository) CourseReminderTargets(ctx context.Context) ([]*notification.CourseReminderTarget, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT ps.endpoint, ps.p256dh, ps.auth_key, u.name, c.title
+		 FROM push_subscriptions ps
+		 JOIN users u ON u.id = ps.user_id
+		 JOIN courses c ON c.user_id = ps.user_id
+		 WHERE c.status IN ('quero_fazer', 'fazendo')
+		   AND array_length(c.active_weekdays, 1) > 0
+		   AND EXTRACT(ISODOW FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::int = ANY(c.active_weekdays)
+		   AND c.reminder_hour = EXTRACT(HOUR FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::int
+		   AND c.reminder_minute = EXTRACT(MINUTE FROM (NOW() AT TIME ZONE 'America/Sao_Paulo'))::int
+		   AND NOT EXISTS (
+		       SELECT 1 FROM course_logs cl
+		       WHERE cl.course_id = c.id
+		         AND cl.log_date = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+		   )`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var targets []*notification.CourseReminderTarget
+	for rows.Next() {
+		t := &notification.CourseReminderTarget{}
+		if err := rows.Scan(&t.Endpoint, &t.P256DH, &t.Auth, &t.UserName, &t.CourseTitle); err != nil {
+			return nil, err
+		}
+		targets = append(targets, t)
+	}
+	return targets, rows.Err()
+}
+
 // ReminderTargets returns all subscriptions for users who still have incomplete habits today (BRT timezone).
 func (r PushSubscriptionRepository) ReminderTargets(ctx context.Context) ([]*notification.ReminderTarget, error) {
 	rows, err := r.pool.Query(ctx,
